@@ -1,0 +1,15 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+        },
+        { "name": "debug", "inherits": "base" },
+        { "name": "asan", "inherits": "base", "cacheVariables": { "MIM_SANITIZE": "ON" } },
+        { "name": "valgrind", "inherits": "base", "cacheVariables": { "MIM_VALGRIND": "ON" } }
+    ]
+}
