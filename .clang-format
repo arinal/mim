@@ -1,3 +1,55 @@
-BasedOnStyle: LLVM
+---
+AccessModifierOffset: -4
+AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: All
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterEnum: false
+  AfterFunction: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeElse: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+BreakBeforeTernaryOperators: true
+ColumnLimit: 0
+ContinuationIndentWidth: 4
+DerivePointerAlignment: false
+IncludeBlocks: Regroup
+IndentCaseLabels: true
+IndentPPDirectives: None
 IndentWidth: 4
-ColumnLimit: 100
+IndentWrappedFunctionNames: false
+InsertNewlineAtEOF: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+PointerAlignment: Middle
+ReflowComments: false
+SortIncludes: true
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+TabWidth: 4
+UseTab: Never
+...

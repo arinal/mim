@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+
 cmake_minimum_required(VERSION 3.20)
 project(mim C)
 
@@ -6,16 +8,19 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(MIM_SANITIZE "Build with AddressSanitizer + UndefinedBehaviorSanitizer" OFF)
+set(MIM_PLATFORM linux CACHE STRING "Platform layer to build, from src/pl/<platform>")
+set(MIM_SANITIZER "" CACHE STRING "'' (none), 'address' (ASan + UBSan) or 'thread' (TSan + UBSan)")
 option(MIM_VALGRIND "Run tests under valgrind" OFF)
 
 add_compile_options(-Wall -Wextra -Werror -pedantic)
 
-if(MIM_SANITIZE)
-    set(san -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+if(MIM_SANITIZER)
+    set(san -fsanitize=${MIM_SANITIZER},undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
     add_compile_options(${san})
     add_link_options(${san})
 endif()
+
+add_subdirectory(src/pl/${MIM_PLATFORM})
 
 enable_testing()
 add_subdirectory(tests)

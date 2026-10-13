@@ -9,7 +9,9 @@
             "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
         },
         { "name": "debug", "inherits": "base" },
-        { "name": "asan", "inherits": "base", "cacheVariables": { "MIM_SANITIZE": "ON" } },
+        { "name": "clang", "inherits": "base", "cacheVariables": { "CMAKE_C_COMPILER": "clang" } },
+        { "name": "asan", "inherits": "base", "cacheVariables": { "MIM_SANITIZER": "address" } },
+        { "name": "tsan", "inherits": "base", "cacheVariables": { "MIM_SANITIZER": "thread" } },
         { "name": "valgrind", "inherits": "base", "cacheVariables": { "MIM_VALGRIND": "ON" } }
     ]
 }
