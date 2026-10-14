@@ -55,6 +55,12 @@ int main(void) {
     q[4096 - 209] = 1;
     CHECK(mem_get_stats(&budget).largest_free == 0);
 
+    // a 0-byte allocation grown to 1 byte is writable (its byte starts out poisoned under ASan)
+    mem_reset(&budget);
+    unsigned char * const z = mem_alloc(&budget, 0, "z");
+    CHECK(mem_try_grow(&budget, z, 1));
+    z[0] = 1;
+
     CHECK(mem_shutdown(&mem) == 0);
     return 0;
 }

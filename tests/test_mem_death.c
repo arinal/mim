@@ -78,6 +78,15 @@ static void double_free(void) {
     mem_free(heap, p);
 }
 
+static void double_free_merged(void) {
+    void * const a = mem_alloc(heap, 10, "a");
+    void * const b = mem_alloc(heap, 10, "b");
+    mem_alloc(heap, 10, "keep"); // so b merges only with a, not with the free tail
+    mem_free(heap, a);
+    mem_free(heap, b); // b's header is now inside a's free block
+    mem_free(heap, b);
+}
+
 static void foreign_pointer(void) {
     int x;
     mem_free(heap, &x);
@@ -109,6 +118,16 @@ static void damaged_magic(void) {
     mem_free(heap, p);
 }
 
+static void damaged_free_list(void) {
+    unsigned char * const a = mem_alloc(heap, 16, "a");
+    unsigned char * const keep = mem_alloc(heap, 16, "keep");
+    mem_free(heap, a);
+    // the 32-byte header's next_free sits 16 bytes before the data; point it at a used block's header
+    unsigned char * const used_header = keep - 32;
+    memcpy(a - 16, &used_header, sizeof(used_header));
+    mem_alloc(heap, 100, "walks past a");
+}
+
 static void write_after_free(void) {
     unsigned char * const p = mem_alloc(heap, 16, "stale");
     mem_free(heap, p);
@@ -126,6 +145,8 @@ int main(void) {
     expect_death(over_budget, death_abort, "mem: budget 'heap' is full: wanted 5000 bytes (tag 'too_big')");
     expect_death(over_budget, death_abort, "largest free block");
     expect_death(double_free, death_abort, "double free");
+    expect_death(double_free_merged, death_abort, "double free after a merge");
+    expect_death(damaged_free_list, death_abort, "free list damaged");
     expect_death(foreign_pointer, death_abort, "is not from this budget");
     expect_death(free_on_bump, death_abort, "is a bump budget");
     expect_death(reset_on_heap, death_abort, "is a heap budget");

@@ -217,6 +217,8 @@ bool mem_try_grow(mem_budget_t * const budget, void * const ptr, const size_t ne
         MEM_FAIL("mem: budget '%s': mem_try_grow on %p, which is not the last allocation", budget->internal.name, ptr);
     }
     const size_t start = (size_t)(budget->internal.last - budget->internal.base);
+    // before the early return too: a 0-byte allocation holds 1 poisoned byte, which growing to 1 hands out
+    ASAN_UNPOISON_MEMORY_REGION(ptr, new_size);
     if (new_size <= budget->internal.used - start) {
         return true;
     }
@@ -227,13 +229,21 @@ bool mem_try_grow(mem_budget_t * const budget, void * const ptr, const size_t ne
     if (budget->internal.used > budget->internal.peak) {
         budget->internal.peak = budget->internal.used;
     }
-    ASAN_UNPOISON_MEMORY_REGION(ptr, new_size);
     return true;
 }
 
 //===----------------------------------------------------------------------===//
 // Heap
 //===----------------------------------------------------------------------===//
+
+// Aborts if `block`, reached through the free list, isn't a free block of this budget
+static void heap_check_free(const mem_budget_t * const budget, const mem_block_t * const block) {
+    const uintptr_t p = (uintptr_t)block;
+    const uintptr_t base = (uintptr_t)budget->internal.base;
+    if (p < base || p > base + budget->internal.size - MEM_MIN_BLOCK || (p - base) % mem_align != 0 || block->magic != mem_magic_free) {
+        MEM_FAIL("mem: budget '%s': free list damaged at %p (a write before a freed block?)", budget->internal.name, (const void *)block);
+    }
+}
 
 static void * heap_alloc(mem_budget_t * const budget, const size_t size, const char * const tag) {
     if (size > UINT32_MAX) {
@@ -244,7 +254,11 @@ static void * heap_alloc(mem_budget_t * const budget, const size_t size, const c
     // first fit
     mem_block_t * prev = NULL;
     mem_block_t * block = budget->internal.free_list;
-    while (block != NULL && block->size < need) {
+    while (block != NULL) {
+        heap_check_free(budget, block);
+        if (block->size >= need) {
+            break;
+        }
         prev = block;
         block = block->next_free;
     }
@@ -301,11 +315,13 @@ static mem_block_t * heap_block_of(const mem_budget_t * const budget, void * con
         MEM_FAIL("mem: budget '%s': %p is not from this budget", budget->internal.name, ptr);
     }
     mem_block_t * const block = (mem_block_t *)ptr - 1;
+    // a header merged into the free block before it is poisoned; every path below that isn't a live block aborts
+    ASAN_UNPOISON_MEMORY_REGION(block, sizeof(*block));
     if (block->magic == mem_magic_free) {
         MEM_FAIL("mem: budget '%s': double free of %p (last tag '%s')", budget->internal.name, ptr, block->tag);
     }
     if (block->magic != mem_magic_used) {
-        MEM_FAIL("mem: budget '%s': %p is not a live block (its header is damaged, or it was never allocated)", budget->internal.name, ptr);
+        MEM_FAIL("mem: budget '%s': %p is not a live block (a double free after a merge, a damaged header, or never allocated)", budget->internal.name, ptr);
     }
     return block;
 }
@@ -345,7 +361,11 @@ void mem_free(mem_budget_t * const budget, void * const ptr) {
     // find the free neighbours: the list is in address order
     mem_block_t * prev = NULL;
     mem_block_t * next = budget->internal.free_list;
-    while (next != NULL && next < block) {
+    while (next != NULL) {
+        heap_check_free(budget, next);
+        if (next > block) {
+            break;
+        }
         prev = next;
         next = next->next_free;
     }
