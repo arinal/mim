@@ -1,4 +1,4 @@
-//===-- pl.h - Platform layer: log, time, files, threads, atomics ---------===//
+//===-- pl.h - Platform layer: log, time, files, memory, threads, atomics -===//
 //
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
@@ -34,6 +34,8 @@ typedef enum pl_result_e {
     pl_result_not_found,
     /// The file is larger than the buffer
     pl_result_too_big,
+    /// The OS refused to provide memory
+    pl_result_out_of_memory,
     /// Any other failure
     pl_result_io_error,
 } pl_result_e;
@@ -90,6 +92,26 @@ pl_result_e pl_file_size(const char * const path, size_t * const out_size);
 ///
 /// Returns `pl_result_too_big` if the file does not fit in `cap` bytes
 pl_result_e pl_file_read(const char * const path, void * const buf, const size_t cap, size_t * const out_len);
+
+//===----------------------------------------------------------------------===//
+// Memory
+//===----------------------------------------------------------------------===//
+
+/// Reserves `size` bytes of zeroed, read-write memory, aligned to a page
+///
+/// Pages only take up RAM once they are first touched, so a large reservation is cheap.
+///
+/// * `size`: Bytes to reserve, at least 1
+/// * `out_ptr`: Receives the start of the memory
+///
+/// Returns `pl_result_out_of_memory` if the OS refuses
+pl_result_e pl_mem_map(const size_t size, void ** const out_ptr);
+
+/// Returns memory from `pl_mem_map` to the OS
+///
+/// * `ptr`: What `pl_mem_map` returned
+/// * `size`: The size passed to `pl_mem_map`
+void pl_mem_unmap(void * const ptr, const size_t size);
 
 //===----------------------------------------------------------------------===//
 // Threads

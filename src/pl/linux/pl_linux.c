@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -24,7 +25,7 @@
 // C99 has no static_assert: an array with negative size is a compile error
 #define PL_STATIC_ASSERT(_name, _cond) typedef char pl_static_assert_##_name[(_cond) ? 1 : -1]
 
-// For pthread calls that can only fail if the caller broke the contract
+// For calls that return 0 on success and can only fail if the caller broke the contract
 #define PL_VERIFY_ERR(_expr)   \
     do {                       \
         const int err = _expr; \
@@ -137,6 +138,25 @@ pl_result_e pl_file_read(const char * const path, void * const buf, const size_t
     close(fd);
     *out_len = len;
     return result;
+}
+
+//===----------------------------------------------------------------------===//
+// Memory
+//===----------------------------------------------------------------------===//
+
+pl_result_e pl_mem_map(const size_t size, void ** const out_ptr) {
+    assert(size > 0);
+    // the kernel rounds the length up to whole pages
+    void * const ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        return pl_result_out_of_memory;
+    }
+    *out_ptr = ptr;
+    return pl_result_ok;
+}
+
+void pl_mem_unmap(void * const ptr, const size_t size) {
+    PL_VERIFY_ERR(munmap(ptr, size));
 }
 
 //===----------------------------------------------------------------------===//

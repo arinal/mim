@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [debug, clang, asan, tsan, valgrind]
+        preset: [debug, clang, asan, tsan, valgrind, fuzz]
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y ninja-build valgrind clang clang-format
@@ -32,3 +32,12 @@ jobs:
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build build/${{ matrix.preset }}
       - run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure
+      - name: fuzz the heap allocator for 60 s
+        if: matrix.preset == 'fuzz'
+        run: mkdir -p crashes && build/fuzz/tests/fuzz_mem -max_total_time=60 -artifact_prefix=crashes/
+      - name: keep the inputs that crashed it
+        if: failure() && matrix.preset == 'fuzz'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: crashes/

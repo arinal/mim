@@ -12,6 +12,11 @@
         { "name": "clang", "inherits": "base", "cacheVariables": { "CMAKE_C_COMPILER": "clang" } },
         { "name": "asan", "inherits": "base", "cacheVariables": { "MIM_SANITIZER": "address" } },
         { "name": "tsan", "inherits": "base", "cacheVariables": { "MIM_SANITIZER": "thread" } },
-        { "name": "valgrind", "inherits": "base", "cacheVariables": { "MIM_VALGRIND": "ON" } }
+        { "name": "valgrind", "inherits": "base", "cacheVariables": { "MIM_VALGRIND": "ON" } },
+        {
+            "name": "fuzz",
+            "inherits": "base",
+            "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_C_FLAGS": "-O1", "MIM_SANITIZER": "address", "MIM_FUZZ": "ON" }
+        }
     ]
 }

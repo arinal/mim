@@ -11,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(MIM_PLATFORM linux CACHE STRING "Platform layer to build, from src/pl/<platform>")
 set(MIM_SANITIZER "" CACHE STRING "'' (none), 'address' (ASan + UBSan) or 'thread' (TSan + UBSan)")
 option(MIM_VALGRIND "Run tests under valgrind" OFF)
+option(MIM_FUZZ "Build fuzz_mem as a libFuzzer target (clang only)" OFF)
 
 add_compile_options(-Wall -Wextra -Werror -pedantic)
 
@@ -21,6 +22,7 @@ if(MIM_SANITIZER)
 endif()
 
 add_subdirectory(src/pl/${MIM_PLATFORM})
+add_subdirectory(src/mem)
 
 enable_testing()
 add_subdirectory(tests)
