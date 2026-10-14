@@ -59,7 +59,23 @@ int main(void) {
     mem_reset(&budget);
     unsigned char * const z = mem_alloc(&budget, 0, "z");
     CHECK(mem_try_grow(&budget, z, 1));
+    CHECK(z[0] == 0xCD);
     z[0] = 1;
+
+    // fills: new and grown bytes are 0xCD; mem_reset leaves 0xDD behind
+    mem_reset(&budget);
+    unsigned char * const f = mem_alloc(&budget, 4, "f");
+    CHECK(f[0] == 0xCD && f[3] == 0xCD);
+    f[0] = 1;
+    CHECK(mem_try_grow(&budget, f, 8));
+    CHECK(f[0] == 1 && f[4] == 0xCD && f[7] == 0xCD);
+    mem_reset(&budget);
+#ifndef __SANITIZE_ADDRESS__ // under ASan, reading memory that was reset is stopped
+    CHECK(f[0] == 0xDD && f[7] == 0xDD);
+#endif
+
+    // a second shutdown does nothing
+    CHECK(mem_shutdown(&mem) == 0);
 
     CHECK(mem_shutdown(&mem) == 0);
     return 0;

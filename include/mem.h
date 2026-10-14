@@ -95,9 +95,9 @@ typedef struct mem_stats_t {
 /// Returns `pl_result_out_of_memory` if the region can't be mapped
 pl_result_e mem_init(mem_t * const mem, const mem_budget_def_t * const defs, mem_budget_t * const budgets, const size_t count);
 
-/// Logs peak usage and leaks for every budget, then unmaps the region
+/// Logs peak usage and leaks for every budget, then unmaps the region and clears `mem`
 ///
-/// Returns the number of leaked heap blocks (0 is good)
+/// A second call does nothing. Returns the number of leaked heap blocks (0 is good)
 size_t mem_shutdown(mem_t * const mem);
 
 /// Allocates `size` bytes aligned to 16; aborts with a report if they don't fit

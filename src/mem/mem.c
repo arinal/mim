@@ -158,6 +158,9 @@ static mem_block_t * next_block(const mem_budget_t * const budget, mem_block_t *
 }
 
 size_t mem_shutdown(mem_t * const mem) {
+    if (mem->base == NULL) {
+        return 0; // already shut down
+    }
     size_t leaks = 0;
     for (size_t i = 0; i < mem->count; i++) {
         const mem_budget_t * const budget = &mem->budgets[i];
@@ -177,6 +180,7 @@ size_t mem_shutdown(mem_t * const mem) {
     // the OS may hand these addresses out again, so nothing in them may stay poisoned
     ASAN_UNPOISON_MEMORY_REGION(mem->base, mem->size);
     pl_mem_unmap(mem->base, mem->size);
+    memset(mem, 0, sizeof(*mem));
     return leaks;
 }
 
@@ -195,7 +199,10 @@ static void * bump_alloc(mem_budget_t * const budget, const size_t size) {
     budget->internal.used = start + n;
     budget->internal.used_blocks++;
     budget->internal.last = ptr;
-    ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+    ASAN_UNPOISON_MEMORY_REGION(ptr, n);
+    memset(ptr, mem_fill_clean, n);
+    // the byte of a 0-byte allocation stays off limits
+    ASAN_POISON_MEMORY_REGION(ptr + size, n - size);
     return ptr;
 }
 
@@ -203,10 +210,13 @@ void mem_reset(mem_budget_t * const budget) {
     if (budget->internal.kind != mem_kind_bump) {
         MEM_FAIL("mem: budget '%s' is a heap budget: free its allocations with mem_free", budget->internal.name);
     }
+    // padding between allocations is poisoned too, so all of it is unpoisoned for the fill
+    ASAN_UNPOISON_MEMORY_REGION(budget->internal.base, budget->internal.used);
+    memset(budget->internal.base, mem_fill_dead, budget->internal.used);
+    ASAN_POISON_MEMORY_REGION(budget->internal.base, budget->internal.size);
     budget->internal.used = 0;
     budget->internal.used_blocks = 0;
     budget->internal.last = NULL;
-    ASAN_POISON_MEMORY_REGION(budget->internal.base, budget->internal.size);
 }
 
 bool mem_try_grow(mem_budget_t * const budget, void * const ptr, const size_t new_size) {
@@ -217,14 +227,16 @@ bool mem_try_grow(mem_budget_t * const budget, void * const ptr, const size_t ne
         MEM_FAIL("mem: budget '%s': mem_try_grow on %p, which is not the last allocation", budget->internal.name, ptr);
     }
     const size_t start = (size_t)(budget->internal.last - budget->internal.base);
-    // before the early return too: a 0-byte allocation holds 1 poisoned byte, which growing to 1 hands out
-    ASAN_UNPOISON_MEMORY_REGION(ptr, new_size);
-    if (new_size <= budget->internal.used - start) {
-        return true;
-    }
     if (new_size > budget->internal.size - start) {
         return false;
     }
+    // even when not growing: a 0-byte allocation holds 1 poisoned byte, which growing to 1 hands out
+    ASAN_UNPOISON_MEMORY_REGION(ptr, new_size);
+    const size_t old_size = budget->internal.used - start;
+    if (new_size <= old_size) {
+        return true;
+    }
+    memset((unsigned char *)ptr + old_size, mem_fill_clean, new_size - old_size);
     budget->internal.used = start + new_size;
     if (budget->internal.used > budget->internal.peak) {
         budget->internal.peak = budget->internal.used;
@@ -486,6 +498,7 @@ mem_stats_t mem_get_stats(const mem_budget_t * const budget) {
         stats.largest_free = budget->internal.size - round_up(budget->internal.used, mem_align);
     } else {
         for (const mem_block_t * block = budget->internal.free_list; block != NULL; block = block->next_free) {
+            heap_check_free(budget, block);
             if (block->size - MEM_MIN_BLOCK > stats.largest_free) {
                 stats.largest_free = block->size - MEM_MIN_BLOCK;
             }
