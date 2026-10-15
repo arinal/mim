@@ -23,6 +23,10 @@ mim_add_test(test_mem_init)
 mim_add_test(test_mem_bump)
 mim_add_test(test_mem_heap)
 mim_add_test(test_mem_death)
+mim_add_test(test_guest)
+target_link_libraries(test_guest PRIVATE mim_guest)
+target_compile_definitions(test_guest PRIVATE MIM_GUEST_DIR="${MIM_GUEST_DIR}")
+add_dependencies(test_guest guests)
 
 if(MIM_FUZZ)
     # libFuzzer provides main(); ctest runs a short session, CI a longer one

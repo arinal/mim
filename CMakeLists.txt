@@ -23,6 +23,14 @@ endif()
 
 add_subdirectory(src/pl/${MIM_PLATFORM})
 add_subdirectory(src/mem)
+add_subdirectory(src/guest)
+
+add_executable(mim src/main.c)
+target_link_libraries(mim PRIVATE mim_guest)
+
+set(MIM_GUEST_DIR ${CMAKE_BINARY_DIR}/guests)
+file(MAKE_DIRECTORY ${MIM_GUEST_DIR})
+add_subdirectory(guests)
 
 enable_testing()
 add_subdirectory(tests)

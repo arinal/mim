@@ -16,14 +16,16 @@ jobs:
         preset: [debug, clang, asan, tsan, valgrind, fuzz]
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build valgrind clang clang-format
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build valgrind clang clang-format lld
+      - name: Rust target for the guests
+        run: rustup target add wasm32v1-none
       - name: format
         if: matrix.preset == 'debug'
-        run: git ls-files '*.c' '*.h' | xargs clang-format --dry-run -Werror
+        run: git ls-files '*.c' '*.h' '*.cpp' ':!extern' | xargs clang-format --dry-run -Werror
       - name: only src/pl and tests may include OS headers
         if: matrix.preset == 'debug'
         run: |
-          ! git grep -nE '#include <(pthread|unistd|fcntl|time|sys/)' -- '*.c' '*.h' ':!src/pl' ':!tests'
+          ! git grep -nE '#include <(pthread|unistd|fcntl|time|sys/)' -- '*.c' '*.h' ':!src/pl' ':!tests' ':!extern'
       - name: allow ThreadSanitizer's memory layout
         # Older TSan runtimes abort with "unexpected memory mapping" when the kernel uses 32 bits
         # of mmap randomisation, as recent Ubuntu does.
