@@ -19,6 +19,12 @@ if(MIM_SANITIZER)
     # behaviour that clang's UBSan reports, harmless on every ABI MIM targets
     target_compile_options(wasm3 PRIVATE $<$<C_COMPILER_ID:Clang>:-fno-sanitize=function>)
 endif()
+if(MIM_SANITIZER STREQUAL "thread")
+    # TSan records each call in a 64Ki-frame shadow stack and crashes past it. Without musttail
+    # (GCC < 15) a deeply recursive guest gets there before wasm3's 8 MiB native-stack budget
+    # traps. 512 KiB holds at most 32Ki frames of 16 bytes or more.
+    target_compile_definitions(wasm3 PUBLIC d_m3MaxNativeStack=524288)
+endif()
 
 add_library(mim_guest STATIC guest.c)
 target_link_libraries(mim_guest PUBLIC mim_mem PRIVATE wasm3)

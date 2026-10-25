@@ -34,6 +34,10 @@ jobs:
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build build/${{ matrix.preset }}
       - run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure
+      - name: show what the guests logged
+        # test_guest sends stderr there while a guest runs, so a crash's report is only in that file
+        if: failure()
+        run: cat build/${{ matrix.preset }}/tests/test_guest.log || true
       - name: fuzz the heap allocator for 60 s
         if: matrix.preset == 'fuzz'
         run: mkdir -p crashes && build/fuzz/tests/fuzz_mem -max_total_time=60 -artifact_prefix=crashes/
