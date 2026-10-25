@@ -1,0 +1,19 @@
+//===-- evil.h - Shared by the hostile guests -----------------------------===//
+//
+// SPDX-License-Identifier: MIT OR GPL-2.0-only
+//
+//===----------------------------------------------------------------------===//
+
+// Each guest is one case. It must be rejected at load or trap; none may take the host down.
+// Most link with common.c for the normal app_tick and app_shutdown.
+
+#pragma once
+
+#include <stddef.h>
+#include <stdint.h>
+
+#define IMPORT(_name) __attribute__((import_module("mim"), import_name(#_name)))
+
+IMPORT(log)
+void mim_log(int32_t level, const char * ptr, size_t len);
+#define LOG(_s) mim_log(1, _s, sizeof(_s) - 1)

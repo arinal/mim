@@ -7,8 +7,8 @@
 // Every heap allocation is filled with its slot number and checked before it's freed, and the last
 // bump allocation is checked before each bump operation, which catches allocations that overlap.
 
-#include "mem.h"
 #include "mim_test.h"
+#include "runtime/mem/mem.h"
 
 #include <string.h>
 

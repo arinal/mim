@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 
-#include "mem.h"
 #include "mim_test.h"
+#include "runtime/mem/mem.h"
 
 #include <stdint.h>
 

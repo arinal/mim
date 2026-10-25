@@ -9,7 +9,7 @@
 // -std=c99 hides POSIX from glibc's headers; this brings back POSIX 2008 + pthread_setname_np
 #define _GNU_SOURCE
 
-#include "pl.h"
+#include "platform/pl.h"
 
 #include <errno.h>
 #include <fcntl.h>

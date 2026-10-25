@@ -3,7 +3,7 @@
 #define _GNU_SOURCE // mkstemp, unlink
 
 #include "mim_test.h"
-#include "pl.h"
+#include "platform/pl.h"
 
 #include <string.h>
 #include <unistd.h>

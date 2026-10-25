@@ -3,7 +3,7 @@
 #define _GNU_SOURCE // pipe, dup, dup2
 
 #include "mim_test.h"
-#include "pl.h"
+#include "platform/pl.h"
 
 #include <string.h>
 #include <unistd.h>

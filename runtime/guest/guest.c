@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
 // Everything wasm3 allocates goes to the guest's two budgets:
-//   runtime  wasm3 itself: parsed module, compiled code, value stack (a heap)
+//   vm       wasm3 itself: parsed module, compiled code, value stack (a heap)
 //   linear   the guest's linear memory: one block that grows in place (bump)
 // wasm3 calls the hooks at the end of this file instead of malloc/free.
 //
 //===----------------------------------------------------------------------===//
 
-#include "guest.h"
+#include "runtime/guest/guest.h"
 
 #include "wasm3.h"
 
@@ -122,7 +122,7 @@ static bool load_module(guest_t * const guest, const void * const wasm, const si
         guest->internal.rt = m3_NewRuntime(guest->internal.env, guest_stack_size, guest);
     }
     if (guest->internal.rt == NULL) {
-        pl_log(pl_log_severity_error, "guest: rejected: budget '%s' is too small for wasm3", guest->internal.runtime->internal.name);
+        pl_log(pl_log_severity_error, "guest: rejected: budget '%s' is too small for wasm3", guest->internal.vm->internal.name);
         return false;
     }
 
@@ -149,11 +149,11 @@ static bool load_module(guest_t * const guest, const void * const wasm, const si
     return true;
 }
 
-bool guest_load(guest_t * const guest, mem_budget_t * const runtime, mem_budget_t * const linear, const void * const wasm, const size_t size) {
+bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, const void * const wasm, const size_t size) {
     assert(g_guest == NULL && "one guest at a time");
-    assert(runtime->internal.used_blocks == 0 && linear->internal.used_blocks == 0);
+    assert(vm->internal.used_blocks == 0 && linear->internal.used_blocks == 0);
     memset(guest, 0, sizeof(*guest));
-    guest->internal.runtime = runtime;
+    guest->internal.vm = vm;
     guest->internal.linear = linear;
     g_guest = guest;
 
@@ -194,9 +194,9 @@ void guest_unload(guest_t * const guest) {
     g_guest = NULL;
 
     // anything left is a wasm3 leak; mem_shutdown would name it too, but only much later
-    const mem_budget_t * const runtime = guest->internal.runtime;
-    if (runtime->internal.used_blocks != 0) {
-        pl_log(pl_log_severity_warn, "guest: wasm3 leaked %zu blocks in budget '%s'", runtime->internal.used_blocks, runtime->internal.name);
+    const mem_budget_t * const vm = guest->internal.vm;
+    if (vm->internal.used_blocks != 0) {
+        pl_log(pl_log_severity_warn, "guest: wasm3 leaked %zu blocks in budget '%s'", vm->internal.used_blocks, vm->internal.name);
     }
 }
 
@@ -209,7 +209,7 @@ void guest_unload(guest_t * const guest) {
 
 void * m3_Malloc_Impl(size_t size) {
     assert(g_guest != NULL);
-    void * const p = mem_try_alloc(g_guest->internal.runtime, size, "wasm3");
+    void * const p = mem_try_alloc(g_guest->internal.vm, size, "wasm3");
     if (p != NULL) {
         memset(p, 0, size); // wasm3 expects calloc
     }
@@ -218,7 +218,7 @@ void * m3_Malloc_Impl(size_t size) {
 
 void m3_Free_Impl(void * ptr) {
     assert(g_guest != NULL);
-    mem_free(g_guest->internal.runtime, ptr);
+    mem_free(g_guest->internal.vm, ptr);
 }
 
 void * m3_Realloc_Impl(void * ptr, size_t new_size, size_t old_size) {

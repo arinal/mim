@@ -7,17 +7,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "guest.h"
+#include "runtime/guest/guest.h"
 
 enum {
-    budget_runtime,
+    budget_vm,
     budget_linear,
     budget_files,
     budget_count,
 };
 
 static const mem_budget_def_t budget_defs[budget_count] = {
-    [budget_runtime] = {"guest runtime", 8 * 1024 * 1024, mem_kind_heap},
+    [budget_vm] = {"guest vm", 8 * 1024 * 1024, mem_kind_heap},
     [budget_linear] = {"guest linear", 32 * 1024 * 1024, mem_kind_bump},
     [budget_files] = {"files", 4 * 1024 * 1024, mem_kind_heap},
 };
@@ -59,7 +59,7 @@ int main(int argc, char ** argv) {
     void * const wasm = read_file(&budgets[budget_files], argv[1], &size);
     if (wasm != NULL) {
         guest_t guest;
-        ok = guest_load(&guest, &budgets[budget_runtime], &budgets[budget_linear], wasm, size);
+        ok = guest_load(&guest, &budgets[budget_vm], &budgets[budget_linear], wasm, size);
         const uint64_t start = pl_time_now_ns();
         uint64_t last = start;
         for (int i = 0; ok && i < 3; i++) {

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mem.h"
+#include "runtime/mem/mem.h"
 
 #include <stdlib.h>
 #include <string.h>

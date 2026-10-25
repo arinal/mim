@@ -2,8 +2,8 @@
 
 #define _GNU_SOURCE // fork, pipe, dup2
 
-#include "mem.h"
 #include "mim_test.h"
+#include "runtime/mem/mem.h"
 
 #include <signal.h>
 #include <string.h>

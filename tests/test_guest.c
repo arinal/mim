@@ -2,15 +2,15 @@
 
 #define _GNU_SOURCE // dup, dup2, fileno
 
-#include "guest.h"
 #include "mim_test.h"
+#include "runtime/guest/guest.h"
 
 #include <string.h>
 #include <unistd.h>
 
 static mem_t mem;
 static mem_budget_t budgets[2];
-static mem_budget_t * const runtime = &budgets[0];
+static mem_budget_t * const vm = &budgets[0];
 static mem_budget_t * const linear = &budgets[1];
 
 // Reads build/<preset>/guests/<name>.wasm into a malloc'd buffer
@@ -37,7 +37,7 @@ static char * run(const void * const wasm, const size_t size, bool * const loade
     CHECK(saved >= 0 && dup2(fileno(log), STDERR_FILENO) == STDERR_FILENO);
 
     guest_t guest;
-    *loaded = guest_load(&guest, runtime, linear, wasm, size);
+    *loaded = guest_load(&guest, vm, linear, wasm, size);
     for (uint64_t t = 16; t <= 48; t += 16) {
         guest_tick(&guest, t, 0.016f);
     }
@@ -48,8 +48,8 @@ static char * run(const void * const wasm, const size_t size, bool * const loade
     close(saved);
 
     // nothing left behind: no wasm3 leaks, linear memory handed back
-    CHECK(mem_get_stats(runtime).used_blocks == 0);
-    mem_check(runtime);
+    CHECK(mem_get_stats(vm).used_blocks == 0);
+    mem_check(vm);
     CHECK(mem_get_stats(linear).used == 0);
 
     // keep "app: ..." and "guest: ...", dropping "<severity> <seconds>.<ms> "
@@ -154,7 +154,7 @@ static void test_greedy_twice(void) {
 
 int main(void) {
     const mem_budget_def_t defs[] = {
-        {"guest runtime", 8 * 1024 * 1024, mem_kind_heap},
+        {"guest vm", 8 * 1024 * 1024, mem_kind_heap},
         {"guest linear", 8 * 1024 * 1024, mem_kind_bump},
     };
     CHECK(mem_init(&mem, defs, budgets, 2) == pl_result_ok);

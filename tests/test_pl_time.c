@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 
 #include "mim_test.h"
-#include "pl.h"
+#include "platform/pl.h"
 
 int main(void) {
     uint64_t prev = pl_time_now_ns();

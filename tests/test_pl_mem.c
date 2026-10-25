@@ -3,7 +3,7 @@
 #define _GNU_SOURCE // sysconf
 
 #include "mim_test.h"
-#include "pl.h"
+#include "platform/pl.h"
 
 #include <stdint.h>
 #include <unistd.h>

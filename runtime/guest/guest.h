@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "mem.h"
+#include "runtime/mem/mem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,7 +32,7 @@ struct M3Function;
 /// One loaded guest; the caller owns the storage, the fields are private to guest.c
 typedef struct guest_t {
     struct {
-        mem_budget_t * runtime;
+        mem_budget_t * vm;
         mem_budget_t * linear;
         // the guest's linear memory, the only allocation in `linear`
         void * linear_block;
@@ -48,14 +48,14 @@ typedef struct guest_t {
 /// Loads a WASM module, links the host imports, checks the exports and calls `app_init`
 ///
 /// * `guest`: Filled in here
-/// * `runtime`: An empty heap budget for wasm3 itself
+/// * `vm`: An empty heap budget for wasm3 itself
 /// * `linear`: An empty bump budget for the guest's linear memory
 /// * `wasm`: The module; must stay valid until `guest_unload`
 /// * `size`: Its size in bytes
 ///
 /// Returns false, after logging why, if the module is rejected or `app_init` traps.
 /// Either way, call `guest_unload` afterwards.
-bool guest_load(guest_t * const guest, mem_budget_t * const runtime, mem_budget_t * const linear, const void * const wasm, const size_t size);
+bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, const void * const wasm, const size_t size);
 
 /// Calls `app_tick`
 ///

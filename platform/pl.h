@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
 // Rules:
-// * Only src/pl/<platform>/ may include OS headers. Everything else includes
-//   this file.
+// * Only platform/<platform>/ may include OS headers. Everything else
+//   includes this file.
 // * pl_* never allocates. The caller provides buffers and storage.
 // * Environment failures return pl_result_e. Caller bugs are caught by assert
 //   in debug builds.
