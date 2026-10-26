@@ -135,6 +135,35 @@ static void write_after_free(void) {
     mem_check(heap);
 }
 
+// The checker itself: each case breaks one rule of the heap behind the allocator's back
+
+// Marks the used block at `p` as free: its header's magic is the 4 bytes before the data
+static void fake_free(unsigned char * const p) {
+    const uint32_t magic_free = 0xF4EEB10Cu;
+    memcpy(p - 4, &magic_free, sizeof(magic_free));
+}
+
+static void check_unmerged(void) {
+    unsigned char * const a = mem_alloc(heap, 16, "a");
+    unsigned char * const b = mem_alloc(heap, 16, "b");
+    mem_alloc(heap, 16, "keep");
+    mem_free(heap, a);
+    fake_free(b); // two free blocks in a row
+    mem_check(heap);
+}
+
+static void check_off_free_list(void) {
+    mem_alloc(heap, 16, "a");
+    fake_free(mem_alloc(heap, 16, "b")); // after a used block, but not on the free list
+    mem_check(heap);
+}
+
+static void check_counters(void) {
+    mem_alloc(heap, 16, "a");
+    heap->internal.used_blocks++; // the blocks are fine, the counter isn't
+    mem_check(heap);
+}
+
 int main(void) {
     const mem_budget_def_t defs[] = {
         {"heap", 4096, mem_kind_heap},
@@ -152,6 +181,9 @@ int main(void) {
     expect_death(reset_on_heap, death_abort, "is a heap budget");
     expect_death(grow_not_last, death_abort, "not the last allocation");
     expect_death(damaged_magic, death_abort, "is not a live block");
+    expect_death(check_unmerged, death_abort, "was not merged with the one before it");
+    expect_death(check_off_free_list, death_abort, "free list doesn't match the heap");
+    expect_death(check_counters, death_abort, "counters don't match the heap");
 
     // With ASan, the bad write itself is stopped, before mem.c's check runs
 #ifdef __SANITIZE_ADDRESS__

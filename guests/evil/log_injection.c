@@ -7,5 +7,6 @@
 #include "evil.h"
 
 void app_init(void) {
-    LOG("ok\nE 1.000 fake");
+    // DEL is a control byte too
+    LOG("ok\nE 1.000 fake\x7f");
 }

@@ -128,13 +128,21 @@ static void test_same_output(void) {
 static void test_hostile(void) {
     expect("evil_bad_pointer", false, "guest: trapped in app_init: mim.log: buffer outside guest memory");
     expect("evil_wrapping_pointer", false, "guest: trapped in app_init: mim.log: buffer outside guest memory");
+    expect("evil_log_edge", false, "app: edge\nguest: trapped in app_init: mim.log: buffer outside guest memory");
+    expect("evil_huge_len", false, "guest: trapped in app_init: mim.log: buffer outside guest memory");
     expect("evil_bad_level", false, "guest: trapped in app_init: mim.log: bad level");
     // one line, not two
-    expect("evil_log_injection", true, "app: ok?E 1.000 fake\napp: tick\n");
+    expect("evil_log_injection", true, "app: ok?E 1.000 fake?\napp: tick\n");
+    // cut to 200 bytes, and marked
+    char long_line[5 + 200 + 5] = "app: ";
+    memset(long_line + 5, 'x', 200);
+    memcpy(long_line + 205, "...\n", 5);
+    expect("evil_log_long", true, long_line);
     expect("evil_recursion", false, "guest: trapped in app_init: [trap] stack overflow");
     expect("evil_unknown_import", false, "guest: trapped in app_init: function body is missing");
     expect("evil_missing_export", false, "guest: rejected: export 'app_tick': function lookup failed");
     expect("evil_wrong_signature", false, "guest: rejected: export 'app_tick' has the wrong signature");
+    expect("evil_wrong_types", false, "guest: rejected: export 'app_tick' has the wrong signature");
     expect("evil_wrong_import", false, "guest: rejected: import 'mim.log': function signature mismatch");
     expect("evil_huge_memory", false, "guest: rejected: memory allocation failed");
     expect("evil_imported_memory", false, "guest: rejected: unallocated linear memory");
@@ -157,8 +165,6 @@ static void test_hostile(void) {
     free(wasm);
 }
 
-// A guest takes all of linear memory and dirties it; the next one still gets zeroed pages.
-// 8 MiB is 128 pages, minus the 17 it starts with and the block's header.
 // The roadmap's 4a test: frames from a fake clock go through loop_begin, and both guests see
 // the dt rules: 1 ms for the first frame and after a pause over 1 s
 static void test_fake_clock(void) {
@@ -197,6 +203,8 @@ static void test_tick_trap(void) {
     CHECK(statuses[0] == guest_dead && statuses[3] == guest_dead);
 }
 
+// A guest takes all of linear memory and dirties it; the next one still gets zeroed pages.
+// 8 MiB is 128 pages, minus the 17 it starts with and the block's header.
 static void test_greedy_twice(void) {
     expect("evil_greedy", true, "app: grew 0110 pages, all zero\napp: tick\n");
     expect("evil_greedy", true, "app: grew 0110 pages, all zero\napp: tick\n");
