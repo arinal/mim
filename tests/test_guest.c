@@ -4,6 +4,7 @@
 
 #include "mim_test.h"
 #include "runtime/guest/guest.h"
+#include "runtime/loop/loop.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -25,9 +26,16 @@ static void * read_guest(const char * const name, size_t * const out_size) {
     return data;
 }
 
-// Loads `wasm`, ticks it 3 times, unloads it, and returns the "app:" and "guest:" lines it
-// logged, without timestamps. Checks both budgets are empty afterwards.
-static char * run(const void * const wasm, const size_t size, bool * const loaded) {
+// Four frames, 16 ms apart; the hello guests quit on the third
+static const loop_frame_t four_frames[] = {{16, 0.016f}, {32, 0.016f}, {48, 0.016f}, {64, 0.016f}};
+
+// What guest_tick returned for each frame of the last run
+static guest_status_e statuses[8];
+
+// Loads `wasm`, ticks it once per frame, unloads it, and returns the "app:" and "guest:" lines
+// it logged, without timestamps. Checks both budgets are empty afterwards.
+static char * run(const void * const wasm, const size_t size, bool * const loaded, const loop_frame_t * const frames, const size_t count) {
+    CHECK(count <= sizeof(statuses) / sizeof(statuses[0]));
     // stderr goes to a file while the guest runs; it stays behind, so a sanitizer report
     // from a crash in here can still be read
     FILE * const log = fopen("test_guest.log", "w+");
@@ -38,8 +46,8 @@ static char * run(const void * const wasm, const size_t size, bool * const loade
 
     guest_t guest;
     *loaded = guest_load(&guest, vm, linear, wasm, size);
-    for (uint64_t t = 16; t <= 48; t += 16) {
-        guest_tick(&guest, t, 0.016f);
+    for (size_t i = 0; i < count; i++) {
+        statuses[i] = guest_tick(&guest, frames[i].abs_time_ms, frames[i].dt_seconds);
     }
     guest_unload(&guest);
 
@@ -76,11 +84,13 @@ static void expect(const char * const name, const bool should_load, const char *
     size_t size;
     void * const wasm = read_guest(name, &size);
     bool loaded;
-    char * const out = run(wasm, size, &loaded);
+    char * const out = run(wasm, size, &loaded, four_frames, 4);
     if (loaded != should_load || (strstr)(out, expected) == NULL) {
         fprintf(stderr, "%s: expected %s and \"%s\" in:\n%s\n", name, should_load ? "loaded" : "rejected", expected, out);
         CHECK(false);
     }
+    // a guest that didn't load is never ticked
+    CHECK(loaded || statuses[0] == guest_dead);
     free(out);
     free(wasm);
 }
@@ -100,11 +110,14 @@ static void test_same_output(void) {
         size_t size;
         void * const wasm = read_guest(names[i], &size);
         bool loaded;
-        char * const out = run(wasm, size, &loaded);
+        char * const out = run(wasm, size, &loaded, four_frames, 4);
         if (!loaded || strcmp(out, hello_log) != 0) {
             fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, hello_log);
             CHECK(false);
         }
+        // quits on the third tick; the fourth doesn't call in (the log has no "tick 4")
+        CHECK(statuses[0] == guest_running && statuses[1] == guest_running);
+        CHECK(statuses[2] == guest_quit && statuses[3] == guest_quit);
         free(out);
         free(wasm);
     }
@@ -132,13 +145,13 @@ static void test_hostile(void) {
         noise[i] = (unsigned char)(i * 131 + 7);
     }
     bool loaded;
-    char * out = run(noise, sizeof(noise), &loaded);
+    char * out = run(noise, sizeof(noise), &loaded, four_frames, 4);
     CHECK(!loaded && (strstr)(out, "guest: rejected: ") != NULL);
     free(out);
 
     size_t size;
     void * const wasm = read_guest("hello_rust", &size);
-    out = run(wasm, size / 2, &loaded);
+    out = run(wasm, size / 2, &loaded, four_frames, 4);
     CHECK(!loaded && (strstr)(out, "guest: rejected: ") != NULL);
     free(out);
     free(wasm);
@@ -146,6 +159,44 @@ static void test_hostile(void) {
 
 // A guest takes all of linear memory and dirties it; the next one still gets zeroed pages.
 // 8 MiB is 128 pages, minus the 17 it starts with and the block's header.
+// The roadmap's 4a test: frames from a fake clock go through loop_begin, and both guests see
+// the dt rules: 1 ms for the first frame and after a pause over 1 s
+static void test_fake_clock(void) {
+    static const char expected[] =
+        "app: hello\n"
+        "app: sum of 0..99999: 4999950000\n"
+        "app: tick 1 at 0 ms, dt 1 ms\n"
+        "app: tick 2 at 16 ms, dt 17 ms\n"
+        "app: tick 3 at 5016 ms, dt 1 ms\n"
+        "app: bye after 3 ticks\n";
+    const uint64_t t0 = 987654321000;
+    const uint64_t times[] = {t0, t0 + loop_frame_ns, t0 + loop_frame_ns + 5000 * 1000000ull};
+    loop_t loop = {0};
+    loop_frame_t frames[3];
+    for (size_t i = 0; i < 3; i++) {
+        frames[i] = loop_begin(&loop, times[i]);
+    }
+    const char * const names[] = {"hello_cpp", "hello_rust"};
+    for (size_t i = 0; i < 2; i++) {
+        size_t size;
+        void * const wasm = read_guest(names[i], &size);
+        bool loaded;
+        char * const out = run(wasm, size, &loaded, frames, 3);
+        if (!loaded || strcmp(out, expected) != 0) {
+            fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, expected);
+            CHECK(false);
+        }
+        free(out);
+        free(wasm);
+    }
+}
+
+// A trap in app_tick: the guest is dead from then on, and app_shutdown isn't called
+static void test_tick_trap(void) {
+    expect("evil_tick_trap", true, "app: init\nguest: trapped in app_tick: [trap] unreachable executed\n");
+    CHECK(statuses[0] == guest_dead && statuses[3] == guest_dead);
+}
+
 static void test_greedy_twice(void) {
     expect("evil_greedy", true, "app: grew 0110 pages, all zero\napp: tick\n");
     expect("evil_greedy", true, "app: grew 0110 pages, all zero\napp: tick\n");
@@ -161,6 +212,8 @@ int main(void) {
 
     test_same_output();
     test_hostile();
+    test_fake_clock();
+    test_tick_trap();
     test_greedy_twice();
     // and a normal guest still runs after all of that
     test_same_output();

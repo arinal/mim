@@ -70,9 +70,10 @@ static const void * mim_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *
 // Load, tick, unload
 //===----------------------------------------------------------------------===//
 
-// Returns true if `f` takes exactly `args` (`count` of them) and returns nothing
-static bool has_signature(IM3Function const f, const M3ValueType * const args, const uint32_t count) {
-    if (m3_GetRetCount(f) != 0 || m3_GetArgCount(f) != count) {
+// Returns true if `f` takes exactly `args` (`count` of them) and returns `ret` (c_m3Type_none: nothing)
+static bool has_signature(IM3Function const f, const M3ValueType ret, const M3ValueType * const args, const uint32_t count) {
+    const uint32_t rets = ret == c_m3Type_none ? 0 : 1;
+    if (m3_GetRetCount(f) != rets || (rets == 1 && m3_GetRetType(f, 0) != ret) || m3_GetArgCount(f) != count) {
         return false;
     }
     for (uint32_t i = 0; i < count; i++) {
@@ -84,14 +85,14 @@ static bool has_signature(IM3Function const f, const M3ValueType * const args, c
 }
 
 // Finds the export `name` and checks its signature; logs and returns NULL if either fails
-static IM3Function find_export(guest_t * const guest, const char * const name, const M3ValueType * const args, const uint32_t count) {
+static IM3Function find_export(guest_t * const guest, const char * const name, const M3ValueType ret, const M3ValueType * const args, const uint32_t count) {
     IM3Function f = NULL;
     const M3Result result = m3_FindFunction(&f, guest->internal.rt, name);
     if (result != m3Err_none) {
         pl_log(pl_log_severity_error, "guest: rejected: export '%s': %s", name, result);
         return NULL;
     }
-    if (!has_signature(f, args, count)) {
+    if (!has_signature(f, ret, args, count)) {
         pl_log(pl_log_severity_error, "guest: rejected: export '%s' has the wrong signature", name);
         return NULL;
     }
@@ -161,9 +162,9 @@ bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * c
         return false;
     }
     static const M3ValueType tick_args[] = {c_m3Type_i64, c_m3Type_f32};
-    IM3Function const init = find_export(guest, "app_init", NULL, 0);
-    guest->internal.tick = find_export(guest, "app_tick", tick_args, 2);
-    guest->internal.shutdown = find_export(guest, "app_shutdown", NULL, 0);
+    IM3Function const init = find_export(guest, "app_init", c_m3Type_none, NULL, 0);
+    guest->internal.tick = find_export(guest, "app_tick", c_m3Type_i32, tick_args, 2);
+    guest->internal.shutdown = find_export(guest, "app_shutdown", c_m3Type_none, NULL, 0);
     if (init == NULL || guest->internal.tick == NULL || guest->internal.shutdown == NULL) {
         return false;
     }
@@ -171,12 +172,24 @@ bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * c
     return call(guest, init);
 }
 
-bool guest_tick(guest_t * const guest, const uint64_t abs_time_ms, const float dt_seconds) {
+guest_status_e guest_tick(guest_t * const guest, const uint64_t abs_time_ms, const float dt_seconds) {
     if (!guest->internal.alive) {
-        return false;
+        return guest_dead;
+    }
+    if (guest->internal.quit) {
+        return guest_quit;
     }
     // m3_CallV takes an f32 as a double, the C rule for variadic arguments
-    return call(guest, guest->internal.tick, abs_time_ms, (double)dt_seconds);
+    if (!call(guest, guest->internal.tick, abs_time_ms, (double)dt_seconds)) {
+        return guest_dead;
+    }
+    // any value is valid: non-zero means "keep going", as in M5
+    int32_t keep_going = 0;
+    const M3Result result = m3_GetResultsV(guest->internal.tick, &keep_going);
+    assert(result == m3Err_none && "find_export checked the result type");
+    (void)result;
+    guest->internal.quit = keep_going == 0;
+    return guest->internal.quit ? guest_quit : guest_running;
 }
 
 void guest_unload(guest_t * const guest) {

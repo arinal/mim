@@ -24,9 +24,10 @@ endif()
 add_subdirectory(platform/${MIM_PLATFORM})
 add_subdirectory(runtime/mem)
 add_subdirectory(runtime/guest)
+add_subdirectory(runtime/loop)
 
 add_executable(mim runtime/main.c)
-target_link_libraries(mim PRIVATE mim_guest)
+target_link_libraries(mim PRIVATE mim_guest mim_loop)
 
 set(MIM_GUEST_DIR ${CMAKE_BINARY_DIR}/guests)
 file(MAKE_DIRECTORY ${MIM_GUEST_DIR})

@@ -28,10 +28,11 @@ void app_init() {
     (mim::Line() << "sum of 0..99999: " << sum).send(mim::Level::info);
 }
 
-void app_tick(uint64_t abs_time_ms, float dt_seconds) {
+mim::Tick app_tick(uint64_t abs_time_ms, float dt_seconds) {
     ticks++;
     const uint32_t dt_ms = uint32_t(dt_seconds * 1000.0f + 0.5f);
     (mim::Line() << "tick " << ticks << " at " << abs_time_ms << " ms, dt " << dt_ms << " ms").send(mim::Level::info);
+    return ticks < 3 ? mim::Tick::keep_going : mim::Tick::quit;
 }
 
 void app_shutdown() {

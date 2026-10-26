@@ -4,7 +4,8 @@
 //
 // A guest is an untrusted WASM module that exports
 //   app_init()                                    called by guest_load
-//   app_tick(i64 abs_time_ms, f32 dt_seconds)     called by guest_tick
+//   app_tick(i64 abs_time_ms, f32 dt_seconds) -> i32
+//                                                 called by guest_tick; 0 = quit
 //   app_shutdown()                                called by guest_unload
 // and may import, from module "mim":
 //   log(i32 level, i32 ptr, i32 len)              level 0 debug ... 3 error
@@ -42,6 +43,8 @@ typedef struct guest_t {
         struct M3Function * shutdown;
         // false once the guest is rejected or has trapped
         bool alive;
+        // true once app_tick has returned 0
+        bool quit;
     } internal;
 } guest_t;
 
@@ -57,10 +60,18 @@ typedef struct guest_t {
 /// Either way, call `guest_unload` afterwards.
 bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, const void * const wasm, const size_t size);
 
-/// Calls `app_tick`
-///
-/// Returns false if the guest trapped now or earlier
-bool guest_tick(guest_t * const guest, const uint64_t abs_time_ms, const float dt_seconds);
+/// What guest_tick found
+typedef enum guest_status_e {
+    /// app_tick returned non-zero: call it again next frame
+    guest_running,
+    /// app_tick returned 0: the guest is done; guest_unload still calls app_shutdown
+    guest_quit,
+    /// The guest trapped, now or before; guest_unload skips app_shutdown
+    guest_dead,
+} guest_status_e;
+
+/// Calls `app_tick`, unless the guest has already quit or died
+guest_status_e guest_tick(guest_t * const guest, const uint64_t abs_time_ms, const float dt_seconds);
 
 /// Calls `app_shutdown` if the guest is still alive, then frees everything it used
 ///

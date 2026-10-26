@@ -14,9 +14,10 @@ void app_init(void) {
     mim_log(1);
 }
 
-void app_tick(uint64_t abs_time_ms, float dt_seconds) {
+int32_t app_tick(uint64_t abs_time_ms, float dt_seconds) {
     (void)abs_time_ms;
     (void)dt_seconds;
+    return 1;
 }
 
 void app_shutdown(void) {

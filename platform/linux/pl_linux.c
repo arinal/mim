@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -48,6 +49,52 @@ void pl_sleep_ms(const uint32_t ms) {
     // a signal interrupts nanosleep early; it then stores the time still left in `left`
     while (nanosleep(&left, &left) == -1 && errno == EINTR) {
     }
+}
+
+void pl_sleep_until_ns(const uint64_t deadline_ns) {
+    const struct timespec deadline = {(time_t)(deadline_ns / 1000000000u), (long)(deadline_ns % 1000000000u)};
+    // the deadline is absolute, so after a signal the same call just goes back to sleep.
+    // A deadline in the past returns at once.
+    while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &deadline, NULL) == EINTR) {
+    }
+}
+
+//===----------------------------------------------------------------------===//
+// Events
+//===----------------------------------------------------------------------===//
+
+// Set by the signal handler, read by pl_tick; setting a sig_atomic_t is all a handler may safely do
+static volatile sig_atomic_t g_quit;
+
+static void on_quit_signal(const int sig) {
+    (void)sig;
+    g_quit = 1;
+}
+
+size_t pl_tick(pl_event_t * const events, const size_t cap) {
+    assert(cap >= 2);
+    // ponytail: pl_tick is called from the main loop only, so a plain flag is enough
+    static bool installed;
+    if (!installed) {
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = on_quit_signal;
+        // once: the next Ctrl-C gets the default action and kills the process
+        sa.sa_flags = (int)SA_RESETHAND;
+        sigemptyset(&sa.sa_mask);
+        PL_VERIFY_ERR(sigaction(SIGINT, &sa, NULL));
+        PL_VERIFY_ERR(sigaction(SIGTERM, &sa, NULL));
+        installed = true;
+    }
+
+    const uint64_t now = pl_time_now_ns();
+    size_t count = 0;
+    if (g_quit) {
+        g_quit = 0;
+        events[count++] = (pl_event_t){pl_event_quit, now};
+    }
+    events[count++] = (pl_event_t){pl_event_time, now};
+    return count;
 }
 
 //===----------------------------------------------------------------------===//

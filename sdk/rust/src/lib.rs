@@ -26,6 +26,13 @@ pub enum Level {
     Error = 3,
 }
 
+/// What app_tick tells the host
+#[repr(i32)]
+pub enum Tick {
+    Quit = 0,
+    Continue = 1,
+}
+
 /// Writes one line to the host's log
 pub fn log(level: Level, msg: &str) {
     // the host checks the pointer and length; a valid &str always passes

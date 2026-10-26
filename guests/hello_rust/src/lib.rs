@@ -8,7 +8,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU32, Ordering};
-use mim::{Level, log};
+use mim::{Level, Tick, log};
 
 static TICKS: AtomicU32 = AtomicU32::new(0);
 
@@ -22,7 +22,7 @@ pub extern "C" fn app_init() {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn app_tick(abs_time_ms: u64, dt_seconds: f32) {
+pub extern "C" fn app_tick(abs_time_ms: u64, dt_seconds: f32) -> Tick {
     let n = TICKS.fetch_add(1, Ordering::Relaxed) + 1;
     let dt_ms = (dt_seconds * 1000.0 + 0.5) as u32;
     log!(
@@ -32,6 +32,7 @@ pub extern "C" fn app_tick(abs_time_ms: u64, dt_seconds: f32) {
         abs_time_ms,
         dt_ms
     );
+    if n < 3 { Tick::Continue } else { Tick::Quit }
 }
 
 #[unsafe(no_mangle)]

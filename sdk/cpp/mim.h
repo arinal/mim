@@ -25,6 +25,10 @@ enum class Level : int32_t { debug = 0,
                              warn = 2,
                              error = 3 };
 
+/// What app_tick tells the host
+enum class Tick : int32_t { quit = 0,
+                            keep_going = 1 };
+
 /// A log line built on the stack; text past its capacity is dropped
 class Line {
 public:

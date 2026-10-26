@@ -71,6 +71,38 @@ uint64_t pl_time_now_ns(void);
 /// Sleeps for at least `ms` milliseconds
 void pl_sleep_ms(const uint32_t ms);
 
+/// Sleeps until pl_time_now_ns() >= deadline_ns; returns at once if that has passed
+void pl_sleep_until_ns(const uint64_t deadline_ns);
+
+//===----------------------------------------------------------------------===//
+// Events
+//===----------------------------------------------------------------------===//
+
+/// What a pl_event_t says happened
+typedef enum pl_event_type_e {
+    /// The frame's timestamp: always the last event pl_tick returns
+    pl_event_time,
+    /// The user asked MIM to stop: Ctrl-C or SIGTERM
+    pl_event_quit,
+} pl_event_type_e;
+
+typedef struct pl_event_t {
+    pl_event_type_e type;
+    /// pl_time_now_ns() when pl_tick picked the event up
+    uint64_t time_ns;
+} pl_event_t;
+
+/// Collects what happened since the last call, without waiting
+///
+/// The first call installs the Ctrl-C and SIGTERM handlers. They run once: a second Ctrl-C
+/// kills the process, which stops a guest stuck inside a frame.
+///
+/// * `events`: Buffer owned by the caller
+/// * `cap`: Its size, at least 2
+///
+/// Returns how many events it wrote: at most one pl_event_quit, then pl_event_time last
+size_t pl_tick(pl_event_t * const events, const size_t cap);
+
 //===----------------------------------------------------------------------===//
 // Files
 //===----------------------------------------------------------------------===//

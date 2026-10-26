@@ -2,12 +2,14 @@
 //
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
-// The engine's budget table lives here. The real main loop (vsync, dt
-// checks) comes later; this runs app_init, three ticks and app_shutdown.
+// The engine's budget table and the main loop: one app_tick per frame, on a
+// 60 Hz schedule, until the guest quits, the user presses Ctrl-C, or the
+// guest traps.
 //
 //===----------------------------------------------------------------------===//
 
 #include "runtime/guest/guest.h"
+#include "runtime/loop/loop.h"
 
 enum {
     budget_vm,
@@ -42,6 +44,33 @@ static void * read_file(mem_budget_t * const budget, const char * const path, si
     return data;
 }
 
+// Returns true if the user asked to stop
+static bool has_quit(const pl_event_t * const events, const size_t count) {
+    for (size_t i = 0; i < count; i++) {
+        if (events[i].type == pl_event_quit) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Runs frames until the guest quits or dies, or the user asks to stop; returns false if the guest died
+static bool run(guest_t * const guest) {
+    loop_t loop = {0};
+    pl_event_t events[8];
+    guest_status_e status = guest_running;
+    while (status == guest_running) {
+        const size_t count = pl_tick(events, 8);
+        if (has_quit(events, count)) {
+            break;
+        }
+        const loop_frame_t frame = loop_begin(&loop, events[count - 1].time_ns);
+        status = guest_tick(guest, frame.abs_time_ms, frame.dt_seconds);
+        pl_sleep_until_ns(loop_deadline(&loop, pl_time_now_ns()));
+    }
+    return status != guest_dead;
+}
+
 int main(int argc, char ** argv) {
     if (argc != 2) {
         pl_log(pl_log_severity_error, "usage: mim <app.wasm>");
@@ -59,15 +88,8 @@ int main(int argc, char ** argv) {
     void * const wasm = read_file(&budgets[budget_files], argv[1], &size);
     if (wasm != NULL) {
         guest_t guest;
-        ok = guest_load(&guest, &budgets[budget_vm], &budgets[budget_linear], wasm, size);
-        const uint64_t start = pl_time_now_ns();
-        uint64_t last = start;
-        for (int i = 0; ok && i < 3; i++) {
-            pl_sleep_ms(16);
-            const uint64_t now = pl_time_now_ns();
-            ok = guest_tick(&guest, (now - start) / 1000000, (float)(now - last) / 1e9f);
-            last = now;
-        }
+        ok = guest_load(&guest, &budgets[budget_vm], &budgets[budget_linear], wasm, size)
+             && run(&guest);
         guest_unload(&guest);
         mem_free(&budgets[budget_files], wasm);
     }

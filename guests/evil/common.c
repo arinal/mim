@@ -15,10 +15,11 @@ void * memset(void * dst, int c, size_t n) {
     return dst;
 }
 
-void app_tick(uint64_t abs_time_ms, float dt_seconds) {
+int32_t app_tick(uint64_t abs_time_ms, float dt_seconds) {
     (void)abs_time_ms;
     (void)dt_seconds;
     LOG("tick");
+    return 1;
 }
 
 void app_shutdown(void) {
