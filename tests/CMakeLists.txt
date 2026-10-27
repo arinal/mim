@@ -30,6 +30,17 @@ target_link_libraries(test_guest PRIVATE mim_guest mim_loop)
 target_compile_definitions(test_guest PRIVATE MIM_GUEST_DIR="${MIM_GUEST_DIR}")
 add_dependencies(test_guest guests)
 
+# SDL's dummy driver: a real window and renderer with no display or GPU. Not under valgrind:
+# SDL's D-Bus setup leaves "still reachable" blocks, which --errors-for-leak-kinds=all counts.
+if(NOT MIM_VALGRIND)
+    # the test pushes SDL events itself
+    find_package(SDL3 REQUIRED CONFIG COMPONENTS SDL3)
+    mim_add_test(test_pl_display)
+    target_link_libraries(test_pl_display PRIVATE mim_pl_display SDL3::SDL3)
+    set_tests_properties(test_pl_display PROPERTIES ENVIRONMENT
+        "SDL_VIDEO_DRIVER=dummy;TSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/tsan.supp")
+endif()
+
 add_test(NAME test_mim COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/test_mim.sh ${MIM_GUEST_DIR} ${run_under} $<TARGET_FILE:mim>)
 # a mim that ignores Ctrl-C would otherwise hang here
 set_tests_properties(test_mim PROPERTIES TIMEOUT 60)

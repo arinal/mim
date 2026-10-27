@@ -23,7 +23,8 @@ set(outputs ${MIM_GUEST_DIR}/hello_cpp.wasm)
 # Hostile guests: one per case, from <case>.c and common.c
 set(evil_dir ${CMAKE_CURRENT_SOURCE_DIR}/evil)
 set(evil_cases bad_pointer wrapping_pointer log_edge huge_len bad_level log_injection log_long greedy recursion
-    missing_export wrong_signature wrong_types wrong_import unknown_import huge_memory imported_memory tick_trap)
+    missing_export wrong_signature wrong_types wrong_import unknown_import huge_memory imported_memory tick_trap
+    present_bad_size present_bad_pointer present_wrapping)
 # these replace or drop common.c's exports
 set(evil_missing_export_sources missing_export.c)
 set(evil_wrong_signature_sources wrong_signature.c)
@@ -55,7 +56,8 @@ add_custom_target(guest_rust ALL
     COMMAND ${MIM_CARGO} build --quiet --release --target wasm32v1-none --target-dir ${cargo_dir}
         --manifest-path ${PROJECT_SOURCE_DIR}/Cargo.toml
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cargo_dir}/wasm32v1-none/release/hello.wasm ${MIM_GUEST_DIR}/hello_rust.wasm
-    BYPRODUCTS ${MIM_GUEST_DIR}/hello_rust.wasm
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cargo_dir}/wasm32v1-none/release/bounce.wasm ${MIM_GUEST_DIR}/bounce_rust.wasm
+    BYPRODUCTS ${MIM_GUEST_DIR}/hello_rust.wasm ${MIM_GUEST_DIR}/bounce_rust.wasm
     VERBATIM)
 
 add_custom_target(guests ALL DEPENDS ${outputs} guest_rust)

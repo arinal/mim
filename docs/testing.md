@@ -28,13 +28,14 @@ Every preset is a Debug build, so `assert` is on everywhere.
 
 ### CI
 
-`.github/workflows/ci.yml` runs all six presets on every push to `main` and every pull request
+`.github/workflows/ci.yml` runs all six presets on `ubuntu-26.04` (the first Ubuntu that packages
+SDL3) on every push to `main` and every pull request
 (`fail-fast: false`, so one red job doesn't hide another). On top of `ctest`:
 
 - **Format** (`debug` job): `clang-format --dry-run -Werror` over every tracked `.c`, `.h`, `.cpp`
   outside `extern/`.
-- **Platform boundary** (`debug` job): fails if `pthread.h`, `unistd.h`, `fcntl.h`, `time.h` or
-  `sys/*` is included anywhere except `platform/`, `tests/` and `extern/`.
+- **Platform boundary** (`debug` job): fails if `pthread.h`, `unistd.h`, `fcntl.h`, `time.h`,
+  `sys/*` or `SDL3/*` is included anywhere except `platform/`, `tests/` and `extern/`.
 - **TSan memory layout** (`tsan` job): `sysctl vm.mmap_rnd_bits=28`. Older TSan runtimes abort with
   "unexpected memory mapping" when the kernel uses 32 bits of mmap randomisation.
 - **Guest log on failure**: `test_guest` sends stderr to `build/<preset>/tests/test_guest.log`
@@ -71,7 +72,8 @@ There are no fixtures and no test registry: `main` calls the test functions in o
 | `test_mem_death` | every misuse aborts with the right message (section 4.2) |
 | `fuzz_mem` | random alloc/free/grow/reset sequences on a heap and a bump budget (section 4.3) |
 | `test_loop` | `dt` rules (1 ms for the first frame, for a 0 gap and for a gap over 1 s; exactly 1 s is real), the 60 Hz grid doesn't drift, an overrun re-anchors it |
-| `test_guest` | the C++ and Rust guests log identical lines; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; both budgets are empty after every guest |
+| `test_pl_display` | with SDL's `dummy` driver (no display or GPU): open a window, present two frames, a pushed `SDL_EVENT_QUIT` comes out of `pl_tick` as one `pl_event_quit`, close, open again. Not under valgrind (section 5) |
+| `test_guest` | the C++ and Rust guests log identical lines and leave the framebuffer untouched; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box is at the pixel its time puts it, at both ends and on the way back; both budgets are empty after every guest |
 | `test_mim` | the `mim` binary end to end (section 4.5) |
 
 ### 3.1 Hostile guests
@@ -99,6 +101,9 @@ says otherwise. `test_guest` checks whether each one loads and what it logged.
 | `huge_memory` | asks for 64 MiB at start (link flag) | rejected: memory allocation failed |
 | `imported_memory` | imports its memory instead of defining it (link flag) | rejected |
 | `tick_trap` | traps in `app_tick` | dead from then on; `app_shutdown` is not called |
+| `present_bad_size` | presents a 640 × 480 frame | trap: frame must be 1280x720 |
+| `present_bad_pointer` | presents from 100 bytes before the end of memory | trap: frame outside guest memory |
+| `present_wrapping` | presents from `0xFFC7C100`, so `ptr + len` wraps around 32 bits to `0x100`, inside memory | trap: frame outside guest memory |
 
 `test_guest` also feeds 256 bytes of noise and the first half of a real module: both rejected.
 
@@ -162,7 +167,8 @@ and check the `abs_time_ms` and `dt` the guests receive.
 
 ### 4.5 The binary end to end
 
-`tests/test_mim.sh <guest dir> <command...>` runs the real `mim`:
+`tests/test_mim.sh <guest dir> <command...>` runs the real `mim`, always with `--headless`, so it
+never opens a window and runs under valgrind too:
 
 1. `hello_rust` exits 0, logs `bye after 3 ticks`, and takes at least 33 ms (3 frames at 60 Hz):
    this catches a main loop that stops pacing.
@@ -184,6 +190,13 @@ and check the `abs_time_ms` and `dt` the guests receive.
   overflows TSan's 64Ki-frame shadow stack before wasm3's 8 MiB native-stack limit traps. Under
   `MIM_SANITIZER=thread`, wasm3 gets `d_m3MaxNativeStack=524288`. To reproduce with a newer GCC:
   `-DCMAKE_C_FLAGS=-DM3_HAS_TAIL_CALL=0`.
+- **SDL under valgrind.** With the `dummy` driver SDL leaks nothing, but its D-Bus setup and
+  `dlopen` leave about 22 "still reachable" blocks, which `--errors-for-leak-kinds=all` counts as
+  errors. So `test_pl_display`, the only test that starts SDL, isn't built in the `valgrind`
+  preset; `asan` and `tsan` run it. `test_mim` passes `--headless`, so `mim` never starts SDL.
+- **libdbus under TSan.** `SDL_Init` and `SDL_Quit` go through libdbus, which takes two of its own
+  locks in opposite orders; TSan reports a potential deadlock. `tests/tsan.supp` suppresses
+  deadlock reports from `libdbus-1.so`, for `test_pl_display` only.
 - **`(strstr)` and `(strchr)`.** Recent glibc defines them as `_Generic` macros, which clang
   `-pedantic` rejects in C99 mode. The parentheses call the real function.
 - **gcov and death tests.** `abort()` skips gcov's exit-time flush, so lines that only run inside

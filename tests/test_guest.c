@@ -14,6 +14,9 @@ static mem_budget_t budgets[2];
 static mem_budget_t * const vm = &budgets[0];
 static mem_budget_t * const linear = &budgets[1];
 
+// what mim.present copies into
+static uint32_t framebuffer[guest_screen_width * guest_screen_height];
+
 // Reads build/<preset>/guests/<name>.wasm into a malloc'd buffer
 static void * read_guest(const char * const name, size_t * const out_size) {
     char path[512];
@@ -45,7 +48,7 @@ static char * run(const void * const wasm, const size_t size, bool * const loade
     CHECK(saved >= 0 && dup2(fileno(log), STDERR_FILENO) == STDERR_FILENO);
 
     guest_t guest;
-    *loaded = guest_load(&guest, vm, linear, wasm, size);
+    *loaded = guest_load(&guest, vm, linear, framebuffer, wasm, size);
     for (size_t i = 0; i < count; i++) {
         statuses[i] = guest_tick(&guest, frames[i].abs_time_ms, frames[i].dt_seconds);
     }
@@ -118,6 +121,10 @@ static void test_same_output(void) {
         // quits on the third tick; the fourth doesn't call in (the log has no "tick 4")
         CHECK(statuses[0] == guest_running && statuses[1] == guest_running);
         CHECK(statuses[2] == guest_quit && statuses[3] == guest_quit);
+        // and never calls mim.present
+        for (size_t p = 0; p < guest_screen_width * guest_screen_height; p++) {
+            CHECK(framebuffer[p] == 0);
+        }
         free(out);
         free(wasm);
     }
@@ -146,6 +153,9 @@ static void test_hostile(void) {
     expect("evil_wrong_import", false, "guest: rejected: import 'mim.log': function signature mismatch");
     expect("evil_huge_memory", false, "guest: rejected: memory allocation failed");
     expect("evil_imported_memory", false, "guest: rejected: unallocated linear memory");
+    expect("evil_present_bad_size", false, "guest: trapped in app_init: mim.present: frame must be 1280x720");
+    expect("evil_present_bad_pointer", false, "guest: trapped in app_init: mim.present: frame outside guest memory");
+    expect("evil_present_wrapping", false, "guest: trapped in app_init: mim.present: frame outside guest memory");
 
     // not a module at all, and a real one cut short
     unsigned char noise[256];
@@ -203,6 +213,40 @@ static void test_tick_trap(void) {
     CHECK(statuses[0] == guest_dead && statuses[3] == guest_dead);
 }
 
+// The pixel at (x, y)
+static uint32_t pixel(const size_t x, const size_t y) {
+    return framebuffer[y * guest_screen_width + x];
+}
+
+// bounce_rust's box is where abs_time_ms says: 64 × 64 white at x = t / 4, rows 328 to 391,
+// on dark blue
+static void test_bounce(void) {
+    const uint32_t white = 0x00FFFFFF;
+    const uint32_t blue = 0x00202040;
+    const struct {
+        uint64_t abs_time_ms;
+        size_t x;
+    } cases[] = {{0, 0}, {400, 100}, {4864, 1216}, {5264, 1116}};
+    size_t size;
+    void * const wasm = read_guest("bounce_rust", &size);
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        const loop_frame_t frame = {cases[i].abs_time_ms, 0.016f};
+        bool loaded;
+        free(run(wasm, size, &loaded, &frame, 1));
+        CHECK(loaded && statuses[0] == guest_running);
+        const size_t x = cases[i].x;
+        // the four corners inside, and the pixels just outside each edge
+        CHECK(pixel(x, 328) == white && pixel(x + 63, 328) == white);
+        CHECK(pixel(x, 391) == white && pixel(x + 63, 391) == white);
+        CHECK(pixel(x, 327) == blue && pixel(x, 392) == blue);
+        CHECK(x == 0 || pixel(x - 1, 328) == blue);
+        CHECK(x + 64 == guest_screen_width || pixel(x + 64, 328) == blue);
+        CHECK(pixel(0, 0) == blue && pixel(1279, 719) == blue);
+    }
+    free(wasm);
+    memset(framebuffer, 0, sizeof(framebuffer));
+}
+
 // A guest takes all of linear memory and dirties it; the next one still gets zeroed pages.
 // 8 MiB is 128 pages, minus the 17 it starts with and the block's header.
 static void test_greedy_twice(void) {
@@ -222,6 +266,7 @@ int main(void) {
     test_hostile();
     test_fake_clock();
     test_tick_trap();
+    test_bounce();
     test_greedy_twice();
     // and a normal guest still runs after all of that
     test_same_output();

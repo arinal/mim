@@ -11,8 +11,10 @@ target_include_directories(wasm3 PUBLIC ${wasm3_dir})
 target_link_libraries(wasm3 PUBLIC m)
 # allocations go to guest.c's hooks instead of calloc/realloc/free
 target_compile_definitions(wasm3 PUBLIC d_m3HostAllocator=1)
-# not our warnings to fix, and -Werror would break on the next compiler upgrade
-target_compile_options(wasm3 PRIVATE -w)
+# not our warnings to fix, and -Werror would break on the next compiler upgrade. Optimised even in
+# Debug builds: at -O0 the interpreter takes 15.5 ms of a 16.7 ms frame to fill bounce_rust's
+# 1280x720 pixels, at -O2 6 ms.
+target_compile_options(wasm3 PRIVATE -w -O2)
 set_target_properties(wasm3 PROPERTIES C_STANDARD 11)
 if(MIM_SANITIZER)
     # wasm3 calls callbacks through a generic function pointer type (ForEachModule): undefined

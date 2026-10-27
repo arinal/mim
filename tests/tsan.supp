@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+#
+# ThreadSanitizer reports in system libraries, not in MIM
+
+# SDL_Init and SDL_Quit set up and tear down D-Bus; libdbus takes two of its own locks in
+# opposite orders there (a potential deadlock inside libdbus, all on the main thread)
+deadlock:libdbus-1.so

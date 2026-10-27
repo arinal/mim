@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
-// The only place (besides tests) allowed to include OS headers.
+// The only place (besides tests and pl_display_sdl.c) allowed to include OS
+// headers.
 //
 //===----------------------------------------------------------------------===//
 
@@ -66,6 +67,10 @@ void pl_sleep_until_ns(const uint64_t deadline_ns) {
 // Set by the signal handler, read by pl_tick; setting a sig_atomic_t is all a handler may safely do
 static volatile sig_atomic_t g_quit;
 
+// Set by pl_display_sdl.c while a window is open: drains the window's events, returns true
+// for a quit. A pointer, so only programs that open a window link SDL.
+bool (*pl_linux_display_poll)(void);
+
 static void on_quit_signal(const int sig) {
     (void)sig;
     g_quit = 1;
@@ -87,9 +92,11 @@ size_t pl_tick(pl_event_t * const events, const size_t cap) {
         installed = true;
     }
 
+    // drained every tick, quit or not
+    const bool display_quit = pl_linux_display_poll != NULL && pl_linux_display_poll();
     const uint64_t now = pl_time_now_ns();
     size_t count = 0;
-    if (g_quit) {
+    if (g_quit || display_quit) {
         g_quit = 0;
         events[count++] = (pl_event_t){pl_event_quit, now};
     }

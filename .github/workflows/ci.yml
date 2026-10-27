@@ -9,23 +9,24 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # 26.04: the first Ubuntu with SDL3 packaged
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
         preset: [debug, clang, asan, tsan, valgrind, fuzz]
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build valgrind clang clang-format lld
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build valgrind clang clang-format lld libsdl3-dev
       - name: Rust target for the guests
         run: rustup target add wasm32v1-none
       - name: format
         if: matrix.preset == 'debug'
         run: git ls-files '*.c' '*.h' '*.cpp' ':!extern' | xargs clang-format --dry-run -Werror
-      - name: only platform/<port> and tests may include OS headers
+      - name: only platform/<port> and tests may include OS headers (SDL counts as one)
         if: matrix.preset == 'debug'
         run: |
-          ! git grep -nE '#include <(pthread|unistd|fcntl|time|sys/)' -- '*.c' '*.h' ':!platform' ':!tests' ':!extern'
+          ! git grep -nE '#include <(pthread|unistd|fcntl|time|sys/|SDL3/)' -- '*.c' '*.h' ':!platform' ':!tests' ':!extern'
       - name: allow ThreadSanitizer's memory layout
         # Older TSan runtimes abort with "unexpected memory mapping" when the kernel uses 32 bits
         # of mmap randomisation, as recent Ubuntu does.

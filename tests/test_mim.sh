@@ -2,6 +2,7 @@
 #
 # The mim binary end to end: exit codes, the 60 Hz pacing, and Ctrl-C.
 # Usage: sh test_mim.sh <guest dir> <command that runs mim...>
+# Every run is --headless: no window, and SDL is never started.
 
 set -u
 dir=$1
@@ -14,7 +15,7 @@ fail() {
 
 # quits after 3 ticks: exit 0, and 3 frames at 60 Hz take over 33 ms
 start=$(date +%s%N)
-out=$("$@" "$dir/hello_rust.wasm" 2>&1) || fail "hello_rust: exit $?: $out"
+out=$("$@" --headless "$dir/hello_rust.wasm" 2>&1) || fail "hello_rust: exit $?: $out"
 ms=$((($(date +%s%N) - start) / 1000000))
 case $out in
 *"app: bye after 3 ticks"*) ;;
@@ -23,12 +24,12 @@ esac
 [ "$ms" -ge 33 ] || fail "3 frames at 60 Hz took only $ms ms"
 
 # traps in app_tick: exit 1
-"$@" "$dir/evil_tick_trap.wasm" 2>/dev/null && fail "evil_tick_trap: exit 0"
+"$@" --headless "$dir/evil_tick_trap.wasm" 2>/dev/null && fail "evil_tick_trap: exit 0"
 
 # never quits by itself; Ctrl-C stops it cleanly. The signal goes after the first tick,
 # when mim's handler is in place.
 log=$(mktemp)
-"$@" "$dir/evil_log_injection.wasm" 2>"$log" &
+"$@" --headless "$dir/evil_log_injection.wasm" 2>"$log" &
 pid=$!
 tries=0
 until grep -q 'app: tick' "$log"; do

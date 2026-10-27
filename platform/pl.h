@@ -38,6 +38,8 @@ typedef enum pl_result_e {
     pl_result_out_of_memory,
     /// Any other failure
     pl_result_io_error,
+    /// The environment lacks it, e.g. a window with no display to show it on
+    pl_result_not_supported,
 } pl_result_e;
 
 //===----------------------------------------------------------------------===//
@@ -82,7 +84,7 @@ void pl_sleep_until_ns(const uint64_t deadline_ns);
 typedef enum pl_event_type_e {
     /// The frame's timestamp: always the last event pl_tick returns
     pl_event_time,
-    /// The user asked MIM to stop: Ctrl-C or SIGTERM
+    /// The user asked MIM to stop: Ctrl-C, SIGTERM, or the window's close button
     pl_event_quit,
 } pl_event_type_e;
 
@@ -102,6 +104,34 @@ typedef struct pl_event_t {
 ///
 /// Returns how many events it wrote: at most one pl_event_quit, then pl_event_time last
 size_t pl_tick(pl_event_t * const events, const size_t cap);
+
+//===----------------------------------------------------------------------===//
+// Display
+//
+// One window at a time, on the main thread. While it's open, pl_tick also
+// collects its events. The window system allocates its own memory, outside
+// MIM's budgets.
+//===----------------------------------------------------------------------===//
+
+/// Opaque storage for a window, owned by the caller
+typedef struct pl_display_t {
+    union {
+        uint64_t align;
+        unsigned char bytes[32];
+    } u;
+} pl_display_t;
+
+/// Opens a resizable window that shows a `width` × `height` frame, scaled to fit
+///
+/// Returns `pl_result_not_supported` if there's no display to open one on (no Wayland or
+/// X11 session): the caller runs headless instead. Logs why on any failure.
+pl_result_e pl_display_open(pl_display_t * const display, const char * const title, const uint32_t width, const uint32_t height);
+
+/// Shows `pixels`: `width` × `height` of 0x00RRGGBB, rows top to bottom; doesn't wait for vsync
+void pl_display_present(pl_display_t * const display, const uint32_t * const pixels);
+
+/// Closes the window
+void pl_display_close(pl_display_t * const display);
 
 //===----------------------------------------------------------------------===//
 // Files

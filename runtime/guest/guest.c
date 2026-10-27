@@ -66,6 +66,25 @@ static const void * mim_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *
     return m3Err_none;
 }
 
+// mim.present(i32 ptr, i32 width, i32 height)
+static const void * mim_present(IM3Runtime runtime, IM3ImportContext ctx, uint64_t * sp, void * mem) {
+    (void)ctx;
+    const uint32_t ptr = *(const uint32_t *)&sp[0];
+    const uint32_t width = *(const uint32_t *)&sp[1];
+    const uint32_t height = *(const uint32_t *)&sp[2];
+    if (width != guest_screen_width || height != guest_screen_height) {
+        return "mim.present: frame must be 1280x720";
+    }
+    const size_t len = (size_t)guest_screen_width * guest_screen_height * 4;
+    const size_t size = m3_GetMemorySize(runtime);
+    if (len > size || ptr > size - len) {
+        return "mim.present: frame outside guest memory";
+    }
+    // ptr needn't be aligned: memcpy doesn't care. The top byte of each pixel is ignored later.
+    memcpy(g_guest->internal.framebuffer, (const unsigned char *)mem + ptr, len);
+    return m3Err_none;
+}
+
 //===----------------------------------------------------------------------===//
 // Load, tick, unload
 //===----------------------------------------------------------------------===//
@@ -112,6 +131,17 @@ static bool call(guest_t * const guest, IM3Function const f, ...) {
     return guest->internal.alive;
 }
 
+// Links mim.<name>; logs and returns false if the guest imports it with another signature.
+// A guest that doesn't import it is fine.
+static bool link_import(IM3Module const module, const char * const name, const char * const signature, M3RawCall const fn) {
+    const M3Result result = m3_LinkRawFunction(module, "mim", name, signature, fn);
+    if (result != m3Err_none && result != m3Err_functionLookupFailed) {
+        pl_log(pl_log_severity_error, "guest: rejected: import 'mim.%s': %s", name, result);
+        return false;
+    }
+    return true;
+}
+
 // Parses, loads and links the module; logs and returns false if it's rejected
 static bool load_module(guest_t * const guest, const void * const wasm, const size_t size) {
     if (size > UINT32_MAX) {
@@ -141,21 +171,16 @@ static bool load_module(guest_t * const guest, const void * const wasm, const si
         return false;
     }
 
-    // a guest that doesn't import mim.log is fine; one that imports it with another signature isn't
-    result = m3_LinkRawFunction(module, "mim", "log", "v(iii)", mim_log);
-    if (result != m3Err_none && result != m3Err_functionLookupFailed) {
-        pl_log(pl_log_severity_error, "guest: rejected: import 'mim.log': %s", result);
-        return false;
-    }
-    return true;
+    return link_import(module, "log", "v(iii)", mim_log) && link_import(module, "present", "v(iii)", mim_present);
 }
 
-bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, const void * const wasm, const size_t size) {
+bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, uint32_t * const framebuffer, const void * const wasm, const size_t size) {
     assert(g_guest == NULL && "one guest at a time");
     assert(vm->internal.used_blocks == 0 && linear->internal.used_blocks == 0);
     memset(guest, 0, sizeof(*guest));
     guest->internal.vm = vm;
     guest->internal.linear = linear;
+    guest->internal.framebuffer = framebuffer;
     g_guest = guest;
 
     if (!load_module(guest, wasm, size)) {

@@ -15,6 +15,7 @@
 
 extern "C" {
 __attribute__((import_module("mim"), import_name("log"))) void mim_log(int32_t level, const char * ptr, size_t len);
+__attribute__((import_module("mim"), import_name("present"))) void mim_present(const uint32_t * pixels, uint32_t width, uint32_t height);
 }
 
 namespace mim {
@@ -24,6 +25,10 @@ enum class Level : int32_t { debug = 0,
                              info = 1,
                              warn = 2,
                              error = 3 };
+
+/// The size every app draws at
+constexpr uint32_t screen_width = 1280;
+constexpr uint32_t screen_height = 720;
 
 /// What app_tick tells the host
 enum class Tick : int32_t { quit = 0,
@@ -69,6 +74,11 @@ private:
 /// Writes one line to the host's log
 inline void log(Level level, const char * msg) {
     (Line() << msg).send(level);
+}
+
+/// Shows a frame: screen_width × screen_height pixels of 0x00RRGGBB, rows top to bottom
+inline void present(const uint32_t * pixels) {
+    mim_present(pixels, screen_width, screen_height);
 }
 
 } // namespace mim

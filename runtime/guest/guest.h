@@ -9,6 +9,8 @@
 //   app_shutdown()                                called by guest_unload
 // and may import, from module "mim":
 //   log(i32 level, i32 ptr, i32 len)              level 0 debug ... 3 error
+//   present(i32 ptr, i32 width, i32 height)       copies a frame of 0x00RRGGBB
+//                                                 pixels to the host; 1280 x 720
 //
 // Rules:
 // * A guest can fail, but never takes the host down. A bad module is
@@ -26,6 +28,12 @@
 extern "C" {
 #endif
 
+enum {
+    /// The size every guest draws at
+    guest_screen_width = 1280,
+    guest_screen_height = 720,
+};
+
 struct M3Environment;
 struct M3Runtime;
 struct M3Function;
@@ -37,6 +45,8 @@ typedef struct guest_t {
         mem_budget_t * linear;
         // the guest's linear memory, the only allocation in `linear`
         void * linear_block;
+        // guest_screen_width × guest_screen_height, filled by mim.present
+        uint32_t * framebuffer;
         struct M3Environment * env;
         struct M3Runtime * rt;
         struct M3Function * tick;
@@ -53,12 +63,14 @@ typedef struct guest_t {
 /// * `guest`: Filled in here
 /// * `vm`: An empty heap budget for wasm3 itself
 /// * `linear`: An empty bump budget for the guest's linear memory
+/// * `framebuffer`: guest_screen_width × guest_screen_height pixels that mim.present copies
+///   into; owned by the caller, valid until `guest_unload`
 /// * `wasm`: The module; must stay valid until `guest_unload`
 /// * `size`: Its size in bytes
 ///
 /// Returns false, after logging why, if the module is rejected or `app_init` traps.
 /// Either way, call `guest_unload` afterwards.
-bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, const void * const wasm, const size_t size);
+bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, uint32_t * const framebuffer, const void * const wasm, const size_t size);
 
 /// What guest_tick found
 typedef enum guest_status_e {

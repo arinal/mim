@@ -14,6 +14,7 @@ mod raw {
     #[link(wasm_import_module = "mim")]
     unsafe extern "C" {
         pub fn log(level: i32, ptr: *const u8, len: usize);
+        pub fn present(ptr: *const u32, width: u32, height: u32);
     }
 }
 
@@ -37,6 +38,18 @@ pub enum Tick {
 pub fn log(level: Level, msg: &str) {
     // the host checks the pointer and length; a valid &str always passes
     unsafe { raw::log(level as i32, msg.as_ptr(), msg.len()) }
+}
+
+/// The size every app draws at
+pub const SCREEN_WIDTH: usize = 1280;
+pub const SCREEN_HEIGHT: usize = 720;
+
+/// Shows a frame: SCREEN_WIDTH × SCREEN_HEIGHT pixels of 0x00RRGGBB, rows top to bottom
+///
+/// Panics if `pixels` is any other length.
+pub fn present(pixels: &[u32]) {
+    assert_eq!(pixels.len(), SCREEN_WIDTH * SCREEN_HEIGHT);
+    unsafe { raw::present(pixels.as_ptr(), SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32) }
 }
 
 /// A line being formatted on the stack; text past its capacity is dropped
