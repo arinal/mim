@@ -11,6 +11,7 @@
 //   log(i32 level, i32 ptr, i32 len)              level 0 debug ... 3 error
 //   present(i32 ptr, i32 width, i32 height)       copies a frame of 0x00RRGGBB
 //                                                 pixels to the host; 1280 x 720
+//   add(i32 a, i32 b) -> i32                      a + b, wrapping
 //
 // Rules:
 // * A guest can fail, but never takes the host down. A bad module is
@@ -70,7 +71,14 @@ typedef struct guest_t {
 ///
 /// Returns false, after logging why, if the module is rejected or `app_init` traps.
 /// Either way, call `guest_unload` afterwards.
-bool guest_load(guest_t *const guest, mem_budget_t *const vm, mem_budget_t *const linear, uint32_t *const framebuffer, const void *const wasm, const size_t size);
+bool guest_load(
+    guest_t *const guest,
+    mem_budget_t *const vm,
+    mem_budget_t *const linear,
+    uint32_t *const framebuffer,
+    const void *const wasm,
+    const size_t size
+);
 
 /// What guest_tick found
 typedef enum guest_status_e {

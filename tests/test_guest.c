@@ -37,7 +37,13 @@ static guest_status_e statuses[8];
 
 // Loads `wasm`, ticks it once per frame, unloads it, and returns the "app:" and "guest:" lines
 // it logged, without timestamps. Checks both budgets are empty afterwards.
-static char *run(const void *const wasm, const size_t size, bool *const loaded, const loop_frame_t *const frames, const size_t count) {
+static char *run(
+    const void *const wasm,
+    const size_t size,
+    bool *const loaded,
+    const loop_frame_t *const frames,
+    const size_t count
+) {
     CHECK(count <= sizeof(statuses) / sizeof(statuses[0]));
     // stderr goes to a file while the guest runs; it stays behind, so a sanitizer report
     // from a crash in here can still be read

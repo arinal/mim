@@ -85,6 +85,16 @@ static const void *mim_present(IM3Runtime runtime, IM3ImportContext ctx, uint64_
     return m3Err_none;
 }
 
+static const void *mim_add(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)runtime;
+    (void)ctx;
+    (void)mem;
+    const uint32_t a = (const uint32_t)sp[1];
+    const uint32_t b = (const uint32_t)sp[2];
+    sp[0] = a + b;
+    return m3Err_none;
+}
+
 //===----------------------------------------------------------------------===//
 // Load, tick, unload
 //===----------------------------------------------------------------------===//
@@ -104,7 +114,13 @@ static bool has_signature(IM3Function const f, const M3ValueType ret, const M3Va
 }
 
 // Finds the export `name` and checks its signature; logs and returns NULL if either fails
-static IM3Function find_export(guest_t *const guest, const char *const name, const M3ValueType ret, const M3ValueType *const args, const uint32_t count) {
+static IM3Function find_export(
+    guest_t *const guest,
+    const char *const name,
+    const M3ValueType ret,
+    const M3ValueType *const args,
+    const uint32_t count
+) {
     IM3Function f = NULL;
     const M3Result result = m3_FindFunction(&f, guest->internal.rt, name);
     if (result != m3Err_none) {
@@ -174,7 +190,14 @@ static bool load_module(guest_t *const guest, const void *const wasm, const size
     return link_import(module, "log", "v(iii)", mim_log) && link_import(module, "present", "v(iii)", mim_present);
 }
 
-bool guest_load(guest_t *const guest, mem_budget_t *const vm, mem_budget_t *const linear, uint32_t *const framebuffer, const void *const wasm, const size_t size) {
+bool guest_load(
+    guest_t *const guest,
+    mem_budget_t *const vm,
+    mem_budget_t *const linear,
+    uint32_t *const framebuffer,
+    const void *const wasm,
+    const size_t size
+) {
     assert(g_guest == NULL && "one guest at a time");
     assert(vm->internal.used_blocks == 0 && linear->internal.used_blocks == 0);
     memset(guest, 0, sizeof(*guest));
