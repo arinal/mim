@@ -19,7 +19,7 @@ int main(void) {
     CHECK(mem.budgets == budgets && mem.count == 3);
 
     // in order, each on a 64-byte boundary, right after the previous one
-    unsigned char * expected = mem.base;
+    unsigned char *expected = mem.base;
     for (size_t i = 0; i < 3; i++) {
         const mem_stats_t stats = mem_get_stats(&budgets[i]);
         CHECK(budgets[i].internal.base == expected);

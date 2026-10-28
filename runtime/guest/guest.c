@@ -25,14 +25,14 @@ enum {
 
 // ponytail: one guest at a time, because wasm3's allocation hooks take no context.
 // Two guests at once need the runtime passed through the hooks (M5 patches wasm3 for that).
-static guest_t * g_guest;
+static guest_t *g_guest;
 
 //===----------------------------------------------------------------------===//
 // Imports
 //===----------------------------------------------------------------------===//
 
 // mim.log(i32 level, i32 ptr, i32 len)
-static const void * mim_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t * sp, void * mem) {
+static const void *mim_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
     (void)ctx;
     // each argument is in its own 64-bit slot
     const uint32_t level = *(const uint32_t *)&sp[0];
@@ -67,7 +67,7 @@ static const void * mim_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *
 }
 
 // mim.present(i32 ptr, i32 width, i32 height)
-static const void * mim_present(IM3Runtime runtime, IM3ImportContext ctx, uint64_t * sp, void * mem) {
+static const void *mim_present(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
     (void)ctx;
     const uint32_t ptr = *(const uint32_t *)&sp[0];
     const uint32_t width = *(const uint32_t *)&sp[1];
@@ -90,7 +90,7 @@ static const void * mim_present(IM3Runtime runtime, IM3ImportContext ctx, uint64
 //===----------------------------------------------------------------------===//
 
 // Returns true if `f` takes exactly `args` (`count` of them) and returns `ret` (c_m3Type_none: nothing)
-static bool has_signature(IM3Function const f, const M3ValueType ret, const M3ValueType * const args, const uint32_t count) {
+static bool has_signature(IM3Function const f, const M3ValueType ret, const M3ValueType *const args, const uint32_t count) {
     const uint32_t rets = ret == c_m3Type_none ? 0 : 1;
     if (m3_GetRetCount(f) != rets || (rets == 1 && m3_GetRetType(f, 0) != ret) || m3_GetArgCount(f) != count) {
         return false;
@@ -104,7 +104,7 @@ static bool has_signature(IM3Function const f, const M3ValueType ret, const M3Va
 }
 
 // Finds the export `name` and checks its signature; logs and returns NULL if either fails
-static IM3Function find_export(guest_t * const guest, const char * const name, const M3ValueType ret, const M3ValueType * const args, const uint32_t count) {
+static IM3Function find_export(guest_t *const guest, const char *const name, const M3ValueType ret, const M3ValueType *const args, const uint32_t count) {
     IM3Function f = NULL;
     const M3Result result = m3_FindFunction(&f, guest->internal.rt, name);
     if (result != m3Err_none) {
@@ -119,7 +119,7 @@ static IM3Function find_export(guest_t * const guest, const char * const name, c
 }
 
 // Calls into the guest; a trap kills it. Arguments as for m3_CallV.
-static bool call(guest_t * const guest, IM3Function const f, ...) {
+static bool call(guest_t *const guest, IM3Function const f, ...) {
     va_list args;
     va_start(args, f);
     const M3Result result = m3_CallVL(f, args);
@@ -133,7 +133,7 @@ static bool call(guest_t * const guest, IM3Function const f, ...) {
 
 // Links mim.<name>; logs and returns false if the guest imports it with another signature.
 // A guest that doesn't import it is fine.
-static bool link_import(IM3Module const module, const char * const name, const char * const signature, M3RawCall const fn) {
+static bool link_import(IM3Module const module, const char *const name, const char *const signature, M3RawCall const fn) {
     const M3Result result = m3_LinkRawFunction(module, "mim", name, signature, fn);
     if (result != m3Err_none && result != m3Err_functionLookupFailed) {
         pl_log(pl_log_severity_error, "guest: rejected: import 'mim.%s': %s", name, result);
@@ -143,7 +143,7 @@ static bool link_import(IM3Module const module, const char * const name, const c
 }
 
 // Parses, loads and links the module; logs and returns false if it's rejected
-static bool load_module(guest_t * const guest, const void * const wasm, const size_t size) {
+static bool load_module(guest_t *const guest, const void *const wasm, const size_t size) {
     if (size > UINT32_MAX) {
         pl_log(pl_log_severity_error, "guest: rejected: %zu bytes is too big", size);
         return false;
@@ -174,7 +174,7 @@ static bool load_module(guest_t * const guest, const void * const wasm, const si
     return link_import(module, "log", "v(iii)", mim_log) && link_import(module, "present", "v(iii)", mim_present);
 }
 
-bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, uint32_t * const framebuffer, const void * const wasm, const size_t size) {
+bool guest_load(guest_t *const guest, mem_budget_t *const vm, mem_budget_t *const linear, uint32_t *const framebuffer, const void *const wasm, const size_t size) {
     assert(g_guest == NULL && "one guest at a time");
     assert(vm->internal.used_blocks == 0 && linear->internal.used_blocks == 0);
     memset(guest, 0, sizeof(*guest));
@@ -197,7 +197,7 @@ bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * c
     return call(guest, init);
 }
 
-guest_status_e guest_tick(guest_t * const guest, const uint64_t abs_time_ms, const float dt_seconds) {
+guest_status_e guest_tick(guest_t *const guest, const uint64_t abs_time_ms, const float dt_seconds) {
     if (!guest->internal.alive) {
         return guest_dead;
     }
@@ -217,7 +217,7 @@ guest_status_e guest_tick(guest_t * const guest, const uint64_t abs_time_ms, con
     return guest->internal.quit ? guest_quit : guest_running;
 }
 
-void guest_unload(guest_t * const guest) {
+void guest_unload(guest_t *const guest) {
     assert(g_guest == guest);
     if (guest->internal.alive) {
         call(guest, guest->internal.shutdown);
@@ -232,7 +232,7 @@ void guest_unload(guest_t * const guest) {
     g_guest = NULL;
 
     // anything left is a wasm3 leak; mem_shutdown would name it too, but only much later
-    const mem_budget_t * const vm = guest->internal.vm;
+    const mem_budget_t *const vm = guest->internal.vm;
     if (vm->internal.used_blocks != 0) {
         pl_log(pl_log_severity_warn, "guest: wasm3 leaked %zu blocks in budget '%s'", vm->internal.used_blocks, vm->internal.name);
     }
@@ -245,26 +245,26 @@ void guest_unload(guest_t * const guest) {
 // much gets an error, never an abort of the host.
 //===----------------------------------------------------------------------===//
 
-void * m3_Malloc_Impl(size_t size) {
+void *m3_Malloc_Impl(size_t size) {
     assert(g_guest != NULL);
-    void * const p = mem_try_alloc(g_guest->internal.vm, size, "wasm3");
+    void *const p = mem_try_alloc(g_guest->internal.vm, size, "wasm3");
     if (p != NULL) {
         memset(p, 0, size); // wasm3 expects calloc
     }
     return p;
 }
 
-void m3_Free_Impl(void * ptr) {
+void m3_Free_Impl(void *ptr) {
     assert(g_guest != NULL);
     mem_free(g_guest->internal.vm, ptr);
 }
 
-void * m3_Realloc_Impl(void * ptr, size_t new_size, size_t old_size) {
+void *m3_Realloc_Impl(void *ptr, size_t new_size, size_t old_size) {
     if (new_size == old_size) {
         return ptr;
     }
     // the budgets have no realloc; wasm3 passes the old size, so copy
-    void * const q = m3_Malloc_Impl(new_size);
+    void *const q = m3_Malloc_Impl(new_size);
     if (q != NULL && ptr != NULL) {
         memcpy(q, ptr, (old_size < new_size) ? old_size : new_size);
         m3_Free_Impl(ptr);
@@ -272,9 +272,9 @@ void * m3_Realloc_Impl(void * ptr, size_t new_size, size_t old_size) {
     return q;
 }
 
-void * m3_LinearResize_Impl(void * ptr, size_t new_size, size_t old_size) {
+void *m3_LinearResize_Impl(void *ptr, size_t new_size, size_t old_size) {
     assert(g_guest != NULL);
-    guest_t * const guest = g_guest;
+    guest_t *const guest = g_guest;
     if (ptr == NULL) {
         // mem_try_grow only grows the last allocation, so there must never be a second one
         if (guest->internal.linear_block != NULL) {
@@ -299,7 +299,7 @@ void * m3_LinearResize_Impl(void * ptr, size_t new_size, size_t old_size) {
     return ptr;
 }
 
-void m3_LinearFree_Impl(void * ptr) {
+void m3_LinearFree_Impl(void *ptr) {
     assert(g_guest != NULL);
     if (ptr == NULL) {
         return;

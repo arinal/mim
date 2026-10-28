@@ -76,7 +76,7 @@ static void on_quit_signal(const int sig) {
     g_quit = 1;
 }
 
-size_t pl_tick(pl_event_t * const events, const size_t cap) {
+size_t pl_tick(pl_event_t *const events, const size_t cap) {
     assert(cap >= 2);
     // ponytail: pl_tick is called from the main loop only, so a plain flag is enough
     static bool installed;
@@ -108,7 +108,7 @@ size_t pl_tick(pl_event_t * const events, const size_t cap) {
 // Log
 //===----------------------------------------------------------------------===//
 
-void pl_log(const pl_log_severity_e severity, const char * const fmt, ...) {
+void pl_log(const pl_log_severity_e severity, const char *const fmt, ...) {
     assert((unsigned)severity <= pl_log_severity_error);
     char buf[512];
     const uint64_t ms = pl_time_now_ns() / 1000000;
@@ -147,7 +147,7 @@ static pl_result_e result_from_errno(void) {
     return (errno == ENOENT) ? pl_result_not_found : pl_result_io_error;
 }
 
-pl_result_e pl_file_size(const char * const path, size_t * const out_size) {
+pl_result_e pl_file_size(const char *const path, size_t *const out_size) {
     struct stat st;
     if (stat(path, &st) != 0) {
         return result_from_errno();
@@ -159,7 +159,7 @@ pl_result_e pl_file_size(const char * const path, size_t * const out_size) {
     return pl_result_ok;
 }
 
-pl_result_e pl_file_read(const char * const path, void * const buf, const size_t cap, size_t * const out_len) {
+pl_result_e pl_file_read(const char *const path, void *const buf, const size_t cap, size_t *const out_len) {
     assert(buf != NULL || cap == 0);
     const int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
@@ -198,10 +198,10 @@ pl_result_e pl_file_read(const char * const path, void * const buf, const size_t
 // Memory
 //===----------------------------------------------------------------------===//
 
-pl_result_e pl_mem_map(const size_t size, void ** const out_ptr) {
+pl_result_e pl_mem_map(const size_t size, void **const out_ptr) {
     assert(size > 0);
     // the kernel rounds the length up to whole pages
-    void * const ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *const ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (ptr == MAP_FAILED) {
         return pl_result_out_of_memory;
     }
@@ -209,7 +209,7 @@ pl_result_e pl_mem_map(const size_t size, void ** const out_ptr) {
     return pl_result_ok;
 }
 
-void pl_mem_unmap(void * const ptr, const size_t size) {
+void pl_mem_unmap(void *const ptr, const size_t size) {
     PL_VERIFY_ERR(munmap(ptr, size));
 }
 
@@ -222,8 +222,8 @@ void pl_mem_unmap(void * const ptr, const size_t size) {
 typedef struct thread_context_t {
     pthread_t id;
     struct {
-        int (*proc)(void * arg);
-        void * arg;
+        int (*proc)(void *arg);
+        void *arg;
     } callback;
 } thread_context_t;
 
@@ -231,13 +231,13 @@ PL_STATIC_ASSERT(thread_fits, sizeof(thread_context_t) <= sizeof(pl_thread_t));
 PL_STATIC_ASSERT(mutex_fits, sizeof(pthread_mutex_t) <= sizeof(pl_mutex_t));
 
 // pthread wants void * (*)(void *); the thread function returns int
-static void * pl_thread_proc(void * arg) {
-    thread_context_t * const ctx = arg;
+static void *pl_thread_proc(void *arg) {
+    thread_context_t *const ctx = arg;
     return (void *)(intptr_t)ctx->callback.proc(ctx->callback.arg);
 }
 
-pl_result_e pl_thread_create(pl_thread_t * const thread, int (*const thread_proc)(void * arg), void * const arg, const char * const name) {
-    thread_context_t * const ctx = (thread_context_t *)thread;
+pl_result_e pl_thread_create(pl_thread_t *const thread, int (*const thread_proc)(void *arg), void *const arg, const char *const name) {
+    thread_context_t *const ctx = (thread_context_t *)thread;
     ctx->callback.proc = thread_proc;
     ctx->callback.arg = arg;
     if (pthread_create(&ctx->id, NULL, pl_thread_proc, ctx) != 0) {
@@ -251,8 +251,8 @@ pl_result_e pl_thread_create(pl_thread_t * const thread, int (*const thread_proc
     return pl_result_ok;
 }
 
-int pl_thread_join(pl_thread_t * const thread) {
-    void * result;
+int pl_thread_join(pl_thread_t *const thread) {
+    void *result;
     PL_VERIFY_ERR(pthread_join(((thread_context_t *)thread)->id, &result));
     return (int)(intptr_t)result;
 }
@@ -261,7 +261,7 @@ int pl_thread_join(pl_thread_t * const thread) {
 // Mutexes
 //===----------------------------------------------------------------------===//
 
-void pl_mutex_init(pl_mutex_t * const mutex) {
+void pl_mutex_init(pl_mutex_t *const mutex) {
     pthread_mutexattr_t attr;
     PL_VERIFY_ERR(pthread_mutexattr_init(&attr));
 #ifndef NDEBUG
@@ -273,14 +273,14 @@ void pl_mutex_init(pl_mutex_t * const mutex) {
     PL_VERIFY_ERR(pthread_mutexattr_destroy(&attr));
 }
 
-void pl_mutex_destroy(pl_mutex_t * const mutex) {
+void pl_mutex_destroy(pl_mutex_t *const mutex) {
     PL_VERIFY_ERR(pthread_mutex_destroy((pthread_mutex_t *)mutex));
 }
 
-void pl_mutex_lock(pl_mutex_t * const mutex) {
+void pl_mutex_lock(pl_mutex_t *const mutex) {
     PL_VERIFY_ERR(pthread_mutex_lock((pthread_mutex_t *)mutex));
 }
 
-void pl_mutex_unlock(pl_mutex_t * const mutex) {
+void pl_mutex_unlock(pl_mutex_t *const mutex) {
     PL_VERIFY_ERR(pthread_mutex_unlock((pthread_mutex_t *)mutex));
 }

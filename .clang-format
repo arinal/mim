@@ -40,7 +40,7 @@ IndentWrappedFunctionNames: false
 InsertNewlineAtEOF: true
 KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1
-PointerAlignment: Middle
+PointerAlignment: Right
 ReflowComments: false
 SortIncludes: true
 SpaceAfterCStyleCast: false

@@ -7,7 +7,7 @@
 #include "evil.h"
 
 void app_init(void) {
-    char * const end = (char *)(__builtin_wasm_memory_size(0) * 65536);
+    char *const end = (char *)(__builtin_wasm_memory_size(0) * 65536);
     static const char edge[] = "edge";
     for (int i = 0; i < 4; i++) {
         end[i - 4] = edge[i];

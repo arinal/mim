@@ -8,14 +8,14 @@ enum {
     increments_per_thread = 100000,
 };
 
-static int return_arg(void * const arg) {
+static int return_arg(void *const arg) {
     return (int)(intptr_t)arg;
 }
 
 static pl_mutex_t lock;
 static uint64_t counter;
 
-static int increment(void * const arg) {
+static int increment(void *const arg) {
     (void)arg;
     for (int i = 0; i < increments_per_thread; ++i) {
         pl_mutex_lock(&lock);

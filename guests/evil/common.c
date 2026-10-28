@@ -7,8 +7,8 @@
 #include "evil.h"
 
 // clang emits calls to it, and there's no libc
-void * memset(void * dst, int c, size_t n) {
-    unsigned char * d = dst;
+void *memset(void *dst, int c, size_t n) {
+    unsigned char *d = dst;
     while (n-- > 0) {
         *d++ = (unsigned char)c;
     }

@@ -61,7 +61,7 @@ typedef enum pl_log_severity_e {
 ///
 /// * `severity`: The severity of the message
 /// * `fmt`: A printf format string, checked by the compiler
-void pl_log(const pl_log_severity_e severity, const char * const fmt, ...) __attribute__((format(printf, 2, 3)));
+void pl_log(const pl_log_severity_e severity, const char *const fmt, ...) __attribute__((format(printf, 2, 3)));
 
 //===----------------------------------------------------------------------===//
 // Time
@@ -103,7 +103,7 @@ typedef struct pl_event_t {
 /// * `cap`: Its size, at least 2
 ///
 /// Returns how many events it wrote: at most one pl_event_quit, then pl_event_time last
-size_t pl_tick(pl_event_t * const events, const size_t cap);
+size_t pl_tick(pl_event_t *const events, const size_t cap);
 
 //===----------------------------------------------------------------------===//
 // Display
@@ -125,13 +125,13 @@ typedef struct pl_display_t {
 ///
 /// Returns `pl_result_not_supported` if there's no display to open one on (no Wayland or
 /// X11 session): the caller runs headless instead. Logs why on any failure.
-pl_result_e pl_display_open(pl_display_t * const display, const char * const title, const uint32_t width, const uint32_t height);
+pl_result_e pl_display_open(pl_display_t *const display, const char *const title, const uint32_t width, const uint32_t height);
 
 /// Shows `pixels`: `width` × `height` of 0x00RRGGBB, rows top to bottom; doesn't wait for vsync
-void pl_display_present(pl_display_t * const display, const uint32_t * const pixels);
+void pl_display_present(pl_display_t *const display, const uint32_t *const pixels);
 
 /// Closes the window
-void pl_display_close(pl_display_t * const display);
+void pl_display_close(pl_display_t *const display);
 
 //===----------------------------------------------------------------------===//
 // Files
@@ -143,7 +143,7 @@ void pl_display_close(pl_display_t * const display);
 /// * `out_size`: Receives the size in bytes
 ///
 /// Returns `pl_result_io_error` if `path` is not a regular file
-pl_result_e pl_file_size(const char * const path, size_t * const out_size);
+pl_result_e pl_file_size(const char *const path, size_t *const out_size);
 
 /// Reads the whole file at `path` into `buf`
 ///
@@ -153,7 +153,7 @@ pl_result_e pl_file_size(const char * const path, size_t * const out_size);
 /// * `out_len`: Receives the number of bytes read
 ///
 /// Returns `pl_result_too_big` if the file does not fit in `cap` bytes
-pl_result_e pl_file_read(const char * const path, void * const buf, const size_t cap, size_t * const out_len);
+pl_result_e pl_file_read(const char *const path, void *const buf, const size_t cap, size_t *const out_len);
 
 //===----------------------------------------------------------------------===//
 // Memory
@@ -167,13 +167,13 @@ pl_result_e pl_file_read(const char * const path, void * const buf, const size_t
 /// * `out_ptr`: Receives the start of the memory
 ///
 /// Returns `pl_result_out_of_memory` if the OS refuses
-pl_result_e pl_mem_map(const size_t size, void ** const out_ptr);
+pl_result_e pl_mem_map(const size_t size, void **const out_ptr);
 
 /// Returns memory from `pl_mem_map` to the OS
 ///
 /// * `ptr`: What `pl_mem_map` returned
 /// * `size`: The size passed to `pl_mem_map`
-void pl_mem_unmap(void * const ptr, const size_t size);
+void pl_mem_unmap(void *const ptr, const size_t size);
 
 //===----------------------------------------------------------------------===//
 // Threads
@@ -202,12 +202,12 @@ typedef struct pl_thread_t {
 /// * `name`: Name shown in debuggers, or NULL; cut to `pl_thread_name_max_length - 1` chars
 ///
 /// Returns `pl_result_io_error` if the OS refuses to create the thread
-pl_result_e pl_thread_create(pl_thread_t * const thread, int (*const thread_proc)(void * arg), void * const arg, const char * const name);
+pl_result_e pl_thread_create(pl_thread_t *const thread, int (*const thread_proc)(void *arg), void *const arg, const char *const name);
 
 /// Waits for `thread` to finish
 ///
 /// Returns what the thread function returned
-int pl_thread_join(pl_thread_t * const thread);
+int pl_thread_join(pl_thread_t *const thread);
 
 //===----------------------------------------------------------------------===//
 // Mutexes
@@ -222,16 +222,16 @@ typedef struct pl_mutex_t {
 } pl_mutex_t;
 
 /// Initializes a mutex; in debug builds, misuse (double lock, unlock by another thread) asserts
-void pl_mutex_init(pl_mutex_t * const mutex);
+void pl_mutex_init(pl_mutex_t *const mutex);
 
 /// Destroys a mutex
-void pl_mutex_destroy(pl_mutex_t * const mutex);
+void pl_mutex_destroy(pl_mutex_t *const mutex);
 
 /// Locks a mutex
-void pl_mutex_lock(pl_mutex_t * const mutex);
+void pl_mutex_lock(pl_mutex_t *const mutex);
 
 /// Unlocks a mutex
-void pl_mutex_unlock(pl_mutex_t * const mutex);
+void pl_mutex_unlock(pl_mutex_t *const mutex);
 
 //===----------------------------------------------------------------------===//
 // Atomics
@@ -259,7 +259,7 @@ typedef enum pl_memory_order_e {
 ///
 /// * `x`: The atomic to load
 /// * `order`: Must not be `pl_memory_order_release` or `pl_memory_order_acq_rel`
-static inline uint32_t pl_atomic_load(pl_atomic_u32_t * const x, const pl_memory_order_e order) {
+static inline uint32_t pl_atomic_load(pl_atomic_u32_t *const x, const pl_memory_order_e order) {
     assert(order != pl_memory_order_release && order != pl_memory_order_acq_rel);
     return __atomic_load_n(&x->u32, order);
 }
@@ -269,7 +269,7 @@ static inline uint32_t pl_atomic_load(pl_atomic_u32_t * const x, const pl_memory
 /// * `x`: The atomic to store to
 /// * `value`: The new value
 /// * `order`: Must not be `pl_memory_order_acquire` or `pl_memory_order_acq_rel`
-static inline void pl_atomic_store(pl_atomic_u32_t * const x, const uint32_t value, const pl_memory_order_e order) {
+static inline void pl_atomic_store(pl_atomic_u32_t *const x, const uint32_t value, const pl_memory_order_e order) {
     assert(order != pl_memory_order_acquire && order != pl_memory_order_acq_rel);
     __atomic_store_n(&x->u32, value, order);
 }
@@ -277,14 +277,14 @@ static inline void pl_atomic_store(pl_atomic_u32_t * const x, const uint32_t val
 /// Adds `value` to `x`, wrapping on overflow
 ///
 /// Returns the value of `x` before the addition
-static inline uint32_t pl_atomic_fetch_add(pl_atomic_u32_t * const x, const uint32_t value, const pl_memory_order_e order) {
+static inline uint32_t pl_atomic_fetch_add(pl_atomic_u32_t *const x, const uint32_t value, const pl_memory_order_e order) {
     return __atomic_fetch_add(&x->u32, value, order);
 }
 
 /// Replaces the value of `x` with `value`
 ///
 /// Returns the previous value of `x`
-static inline uint32_t pl_atomic_exchange(pl_atomic_u32_t * const x, const uint32_t value, const pl_memory_order_e order) {
+static inline uint32_t pl_atomic_exchange(pl_atomic_u32_t *const x, const uint32_t value, const pl_memory_order_e order) {
     return __atomic_exchange_n(&x->u32, value, order);
 }
 
@@ -296,7 +296,7 @@ static inline uint32_t pl_atomic_exchange(pl_atomic_u32_t * const x, const uint3
 /// * `order`: Ordering on success. A failed CAS is only a load, so it uses `order` minus any release part
 ///
 /// Returns true if `x` was updated
-static inline bool pl_atomic_cas(pl_atomic_u32_t * const x, uint32_t * const expected, const uint32_t desired, const pl_memory_order_e order) {
+static inline bool pl_atomic_cas(pl_atomic_u32_t *const x, uint32_t *const expected, const uint32_t desired, const pl_memory_order_e order) {
     pl_memory_order_e failure_order = order;
     if (order == pl_memory_order_release) {
         failure_order = pl_memory_order_relaxed;

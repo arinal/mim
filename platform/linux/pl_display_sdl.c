@@ -16,9 +16,9 @@
 
 // What actually lives inside the caller's pl_display_t bytes
 typedef struct display_context_t {
-    SDL_Window * window;
-    SDL_Renderer * renderer;
-    SDL_Texture * texture;
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
     uint32_t width;
 } display_context_t;
 
@@ -41,10 +41,10 @@ static bool poll_events(void) {
     return quit;
 }
 
-pl_result_e pl_display_open(pl_display_t * const display, const char * const title, const uint32_t width, const uint32_t height) {
+pl_result_e pl_display_open(pl_display_t *const display, const char *const title, const uint32_t width, const uint32_t height) {
     assert(!g_open && "one display at a time");
     assert(width > 0 && height > 0 && width <= INT32_MAX / 4 && height <= INT32_MAX);
-    display_context_t * const ctx = (display_context_t *)display;
+    display_context_t *const ctx = (display_context_t *)display;
     SDL_zerop(ctx);
 
     // pl_tick owns Ctrl-C: SDL's handlers would turn the second one into an event instead of a kill
@@ -72,9 +72,9 @@ pl_result_e pl_display_open(pl_display_t * const display, const char * const tit
     return pl_result_ok;
 }
 
-void pl_display_present(pl_display_t * const display, const uint32_t * const pixels) {
+void pl_display_present(pl_display_t *const display, const uint32_t *const pixels) {
     assert(g_open);
-    display_context_t * const ctx = (display_context_t *)display;
+    display_context_t *const ctx = (display_context_t *)display;
     // failures here (a lost GPU, a window being torn down) cost one frame; nothing to recover
     SDL_UpdateTexture(ctx->texture, NULL, pixels, (int)(ctx->width * 4));
     SDL_RenderClear(ctx->renderer);
@@ -82,9 +82,9 @@ void pl_display_present(pl_display_t * const display, const uint32_t * const pix
     SDL_RenderPresent(ctx->renderer);
 }
 
-void pl_display_close(pl_display_t * const display) {
+void pl_display_close(pl_display_t *const display) {
     assert(g_open);
-    display_context_t * const ctx = (display_context_t *)display;
+    display_context_t *const ctx = (display_context_t *)display;
     pl_linux_display_poll = NULL;
     SDL_DestroyTexture(ctx->texture);
     SDL_DestroyRenderer(ctx->renderer);

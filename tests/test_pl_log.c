@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 // Runs pl_log with stderr pointed at a pipe and returns what came out.
-static size_t capture(char * const out, const size_t cap, const pl_log_severity_e severity, const char * const msg) {
+static size_t capture(char *const out, const size_t cap, const pl_log_severity_e severity, const char *const msg) {
     int fds[2];
     CHECK(pipe(fds) == 0);
     const int saved = dup(STDERR_FILENO);
@@ -27,7 +27,7 @@ static size_t capture(char * const out, const size_t cap, const pl_log_severity_
     return (size_t)n;
 }
 
-static bool ends_with(const char * const s, const size_t len, const char * const suffix) {
+static bool ends_with(const char *const s, const size_t len, const char *const suffix) {
     const size_t n = strlen(suffix);
     return len >= n && memcmp(s + len - n, suffix, n) == 0;
 }

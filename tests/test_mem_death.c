@@ -13,8 +13,8 @@
 
 static mem_t mem;
 static mem_budget_t budgets[2];
-static mem_budget_t * const heap = &budgets[0];
-static mem_budget_t * const bump = &budgets[1];
+static mem_budget_t *const heap = &budgets[0];
+static mem_budget_t *const bump = &budgets[1];
 
 typedef enum death_e {
     // mem.c's own check: pl_log, then abort()
@@ -24,7 +24,7 @@ typedef enum death_e {
 } death_e;
 
 // Runs `fn` in a child process, with stderr through a pipe, and checks how it died and what it printed
-static void expect_death(void (*const fn)(void), const death_e how, const char * const expected) {
+static void expect_death(void (*const fn)(void), const death_e how, const char *const expected) {
     int fds[2];
     CHECK(pipe(fds) == 0);
     const pid_t pid = fork();
@@ -73,14 +73,14 @@ static void over_budget(void) {
 }
 
 static void double_free(void) {
-    void * const p = mem_alloc(heap, 10, "twice");
+    void *const p = mem_alloc(heap, 10, "twice");
     mem_free(heap, p);
     mem_free(heap, p);
 }
 
 static void double_free_merged(void) {
-    void * const a = mem_alloc(heap, 10, "a");
-    void * const b = mem_alloc(heap, 10, "b");
+    void *const a = mem_alloc(heap, 10, "a");
+    void *const b = mem_alloc(heap, 10, "b");
     mem_alloc(heap, 10, "keep"); // so b merges only with a, not with the free tail
     mem_free(heap, a);
     mem_free(heap, b); // b's header is now inside a's free block
@@ -101,35 +101,35 @@ static void reset_on_heap(void) {
 }
 
 static void grow_not_last(void) {
-    void * const p = mem_alloc(bump, 10, "first");
+    void *const p = mem_alloc(bump, 10, "first");
     mem_alloc(bump, 10, "second");
     mem_try_grow(bump, p, 20);
 }
 
 static void damaged_guard(void) {
-    unsigned char * const p = mem_alloc(heap, 13, "short");
+    unsigned char *const p = mem_alloc(heap, 13, "short");
     p[13] = 0; // one past the end
     mem_free(heap, p);
 }
 
 static void damaged_magic(void) {
-    unsigned char * const p = mem_alloc(heap, 16, "under");
+    unsigned char *const p = mem_alloc(heap, 16, "under");
     p[-1] = 0; // one before the start: the last byte of the header's magic
     mem_free(heap, p);
 }
 
 static void damaged_free_list(void) {
-    unsigned char * const a = mem_alloc(heap, 16, "a");
-    unsigned char * const keep = mem_alloc(heap, 16, "keep");
+    unsigned char *const a = mem_alloc(heap, 16, "a");
+    unsigned char *const keep = mem_alloc(heap, 16, "keep");
     mem_free(heap, a);
     // the 32-byte header's next_free sits 16 bytes before the data; point it at a used block's header
-    unsigned char * const used_header = keep - 32;
+    unsigned char *const used_header = keep - 32;
     memcpy(a - 16, &used_header, sizeof(used_header));
     mem_alloc(heap, 100, "walks past a");
 }
 
 static void write_after_free(void) {
-    unsigned char * const p = mem_alloc(heap, 16, "stale");
+    unsigned char *const p = mem_alloc(heap, 16, "stale");
     mem_free(heap, p);
     p[0] = 0;
     mem_check(heap);
@@ -138,14 +138,14 @@ static void write_after_free(void) {
 // The checker itself: each case breaks one rule of the heap behind the allocator's back
 
 // Marks the used block at `p` as free: its header's magic is the 4 bytes before the data
-static void fake_free(unsigned char * const p) {
+static void fake_free(unsigned char *const p) {
     const uint32_t magic_free = 0xF4EEB10Cu;
     memcpy(p - 4, &magic_free, sizeof(magic_free));
 }
 
 static void check_unmerged(void) {
-    unsigned char * const a = mem_alloc(heap, 16, "a");
-    unsigned char * const b = mem_alloc(heap, 16, "b");
+    unsigned char *const a = mem_alloc(heap, 16, "a");
+    unsigned char *const b = mem_alloc(heap, 16, "b");
     mem_alloc(heap, 16, "keep");
     mem_free(heap, a);
     fake_free(b); // two free blocks in a row

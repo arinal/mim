@@ -11,19 +11,19 @@
 
 static mem_t mem;
 static mem_budget_t budgets[2];
-static mem_budget_t * const vm = &budgets[0];
-static mem_budget_t * const linear = &budgets[1];
+static mem_budget_t *const vm = &budgets[0];
+static mem_budget_t *const linear = &budgets[1];
 
 // what mim.present copies into
 static uint32_t framebuffer[guest_screen_width * guest_screen_height];
 
 // Reads build/<preset>/guests/<name>.wasm into a malloc'd buffer
-static void * read_guest(const char * const name, size_t * const out_size) {
+static void *read_guest(const char *const name, size_t *const out_size) {
     char path[512];
     snprintf(path, sizeof(path), "%s/%s.wasm", MIM_GUEST_DIR, name);
     size_t size;
     CHECK(pl_file_size(path, &size) == pl_result_ok);
-    void * const data = malloc(size);
+    void *const data = malloc(size);
     CHECK(data != NULL);
     CHECK(pl_file_read(path, data, size, out_size) == pl_result_ok);
     return data;
@@ -37,11 +37,11 @@ static guest_status_e statuses[8];
 
 // Loads `wasm`, ticks it once per frame, unloads it, and returns the "app:" and "guest:" lines
 // it logged, without timestamps. Checks both budgets are empty afterwards.
-static char * run(const void * const wasm, const size_t size, bool * const loaded, const loop_frame_t * const frames, const size_t count) {
+static char *run(const void *const wasm, const size_t size, bool *const loaded, const loop_frame_t *const frames, const size_t count) {
     CHECK(count <= sizeof(statuses) / sizeof(statuses[0]));
     // stderr goes to a file while the guest runs; it stays behind, so a sanitizer report
     // from a crash in here can still be read
-    FILE * const log = fopen("test_guest.log", "w+");
+    FILE *const log = fopen("test_guest.log", "w+");
     CHECK(log != NULL);
     fflush(stderr);
     const int saved = dup(STDERR_FILENO);
@@ -65,11 +65,11 @@ static char * run(const void * const wasm, const size_t size, bool * const loade
 
     // keep "app: ..." and "guest: ...", dropping "<severity> <seconds>.<ms> "
     static char line[1024];
-    char * const out = calloc(64 * 1024, 1);
+    char *const out = calloc(64 * 1024, 1);
     CHECK(out != NULL);
     rewind(log);
     while (fgets(line, sizeof(line), log) != NULL) {
-        const char * start = (strstr)(line, " app: ");
+        const char *start = (strstr)(line, " app: ");
         if (start == NULL) {
             start = (strstr)(line, " guest: ");
         }
@@ -83,11 +83,11 @@ static char * run(const void * const wasm, const size_t size, bool * const loade
 }
 
 // Runs the guest called `name` and checks what guest_load returned (false for a trap in app_init too) and what it logged
-static void expect(const char * const name, const bool should_load, const char * const expected) {
+static void expect(const char *const name, const bool should_load, const char *const expected) {
     size_t size;
-    void * const wasm = read_guest(name, &size);
+    void *const wasm = read_guest(name, &size);
     bool loaded;
-    char * const out = run(wasm, size, &loaded, four_frames, 4);
+    char *const out = run(wasm, size, &loaded, four_frames, 4);
     if (loaded != should_load || (strstr)(out, expected) == NULL) {
         fprintf(stderr, "%s: expected %s and \"%s\" in:\n%s\n", name, should_load ? "loaded" : "rejected", expected, out);
         CHECK(false);
@@ -108,12 +108,12 @@ static const char hello_log[] =
 
 // The C++ and the Rust guest log exactly the same lines, and grow linear memory to do it
 static void test_same_output(void) {
-    const char * const names[] = {"hello_cpp", "hello_rust"};
+    const char *const names[] = {"hello_cpp", "hello_rust"};
     for (size_t i = 0; i < 2; i++) {
         size_t size;
-        void * const wasm = read_guest(names[i], &size);
+        void *const wasm = read_guest(names[i], &size);
         bool loaded;
-        char * const out = run(wasm, size, &loaded, four_frames, 4);
+        char *const out = run(wasm, size, &loaded, four_frames, 4);
         if (!loaded || strcmp(out, hello_log) != 0) {
             fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, hello_log);
             CHECK(false);
@@ -163,12 +163,12 @@ static void test_hostile(void) {
         noise[i] = (unsigned char)(i * 131 + 7);
     }
     bool loaded;
-    char * out = run(noise, sizeof(noise), &loaded, four_frames, 4);
+    char *out = run(noise, sizeof(noise), &loaded, four_frames, 4);
     CHECK(!loaded && (strstr)(out, "guest: rejected: ") != NULL);
     free(out);
 
     size_t size;
-    void * const wasm = read_guest("hello_rust", &size);
+    void *const wasm = read_guest("hello_rust", &size);
     out = run(wasm, size / 2, &loaded, four_frames, 4);
     CHECK(!loaded && (strstr)(out, "guest: rejected: ") != NULL);
     free(out);
@@ -192,12 +192,12 @@ static void test_fake_clock(void) {
     for (size_t i = 0; i < 3; i++) {
         frames[i] = loop_begin(&loop, times[i]);
     }
-    const char * const names[] = {"hello_cpp", "hello_rust"};
+    const char *const names[] = {"hello_cpp", "hello_rust"};
     for (size_t i = 0; i < 2; i++) {
         size_t size;
-        void * const wasm = read_guest(names[i], &size);
+        void *const wasm = read_guest(names[i], &size);
         bool loaded;
-        char * const out = run(wasm, size, &loaded, frames, 3);
+        char *const out = run(wasm, size, &loaded, frames, 3);
         if (!loaded || strcmp(out, expected) != 0) {
             fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, expected);
             CHECK(false);
@@ -228,7 +228,7 @@ static void test_bounce(void) {
         size_t x;
     } cases[] = {{0, 0}, {400, 100}, {4864, 1216}, {5264, 1116}};
     size_t size;
-    void * const wasm = read_guest("bounce_rust", &size);
+    void *const wasm = read_guest("bounce_rust", &size);
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
         const loop_frame_t frame = {cases[i].abs_time_ms, 0.016f};
         bool loaded;

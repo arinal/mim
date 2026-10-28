@@ -14,8 +14,8 @@
 #include <stdint.h>
 
 extern "C" {
-__attribute__((import_module("mim"), import_name("log"))) void mim_log(int32_t level, const char * ptr, size_t len);
-__attribute__((import_module("mim"), import_name("present"))) void mim_present(const uint32_t * pixels, uint32_t width, uint32_t height);
+__attribute__((import_module("mim"), import_name("log"))) void mim_log(int32_t level, const char *ptr, size_t len);
+__attribute__((import_module("mim"), import_name("present"))) void mim_present(const uint32_t *pixels, uint32_t width, uint32_t height);
 }
 
 namespace mim {
@@ -37,14 +37,14 @@ enum class Tick : int32_t { quit = 0,
 /// A log line built on the stack; text past its capacity is dropped
 class Line {
 public:
-    Line & operator<<(const char * s) {
+    Line &operator<<(const char *s) {
         while (*s != '\0' && len_ < sizeof(buf_)) {
             buf_[len_++] = *s++;
         }
         return *this;
     }
 
-    Line & operator<<(uint64_t n) {
+    Line &operator<<(uint64_t n) {
         char digits[20];
         size_t count = 0;
         do {
@@ -57,7 +57,7 @@ public:
         return *this;
     }
 
-    Line & operator<<(uint32_t n) {
+    Line &operator<<(uint32_t n) {
         return *this << uint64_t(n);
     }
 
@@ -72,12 +72,12 @@ private:
 };
 
 /// Writes one line to the host's log
-inline void log(Level level, const char * msg) {
+inline void log(Level level, const char *msg) {
     (Line() << msg).send(level);
 }
 
 /// Shows a frame: screen_width × screen_height pixels of 0x00RRGGBB, rows top to bottom
-inline void present(const uint32_t * pixels) {
+inline void present(const uint32_t *pixels) {
     mim_present(pixels, screen_width, screen_height);
 }
 

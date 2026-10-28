@@ -21,14 +21,14 @@ enum {
 
 static mem_t mem;
 static mem_budget_t budgets[2];
-static mem_budget_t * const heap = &budgets[0];
-static mem_budget_t * const bump = &budgets[1];
+static mem_budget_t *const heap = &budgets[0];
+static mem_budget_t *const bump = &budgets[1];
 
-static unsigned char * slots[slot_count];
+static unsigned char *slots[slot_count];
 static size_t sizes[slot_count];
 
 static void release(const size_t slot) {
-    unsigned char * const p = slots[slot];
+    unsigned char *const p = slots[slot];
     if (p == NULL) {
         return;
     }
@@ -40,10 +40,10 @@ static void release(const size_t slot) {
 }
 
 // The last bump allocation, the only one that can grow
-static unsigned char * last;
+static unsigned char *last;
 static size_t last_size;
 
-static bool bytes_are(const unsigned char * const p, const unsigned char byte, const size_t n) {
+static bool bytes_are(const unsigned char *const p, const unsigned char byte, const size_t n) {
     for (size_t i = 0; i < n; i++) {
         if (p[i] != byte) {
             return false;
@@ -73,9 +73,9 @@ static void bump_op(const unsigned op, const size_t n) {
     last_size = n;
 }
 
-int LLVMFuzzerTestOneInput(const unsigned char * const data, const size_t size);
+int LLVMFuzzerTestOneInput(const unsigned char *const data, const size_t size);
 
-int LLVMFuzzerTestOneInput(const unsigned char * const data, const size_t size) {
+int LLVMFuzzerTestOneInput(const unsigned char *const data, const size_t size) {
     // One region for the whole run: each input must leave the heap as it found it (checked at the end)
     if (mem.base == NULL) {
         static const mem_budget_def_t defs[] = {

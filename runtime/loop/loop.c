@@ -17,7 +17,7 @@ enum {
 
 static const float loop_min_dt = 0.001f;
 
-loop_frame_t loop_begin(loop_t * const loop, const uint64_t now_ns) {
+loop_frame_t loop_begin(loop_t *const loop, const uint64_t now_ns) {
     if (!loop->internal.started) {
         loop->internal.started = true;
         loop->internal.start_ns = now_ns;
@@ -33,7 +33,7 @@ loop_frame_t loop_begin(loop_t * const loop, const uint64_t now_ns) {
     return (loop_frame_t){(now_ns - loop->internal.start_ns) / 1000000, dt};
 }
 
-uint64_t loop_deadline(loop_t * const loop, const uint64_t now_ns) {
+uint64_t loop_deadline(loop_t *const loop, const uint64_t now_ns) {
     assert(loop->internal.started);
     loop->internal.deadline_ns += loop_frame_ns;
     if (loop->internal.deadline_ns <= now_ns) {

@@ -15,8 +15,8 @@
 #define IMPORT(_name) __attribute__((import_module("mim"), import_name(#_name)))
 
 IMPORT(log)
-void mim_log(int32_t level, const char * ptr, size_t len);
+void mim_log(int32_t level, const char *ptr, size_t len);
 IMPORT(present)
-void mim_present(const uint32_t * pixels, uint32_t width, uint32_t height);
+void mim_present(const uint32_t *pixels, uint32_t width, uint32_t height);
 
 #define LOG(_s) mim_log(1, _s, sizeof(_s) - 1)

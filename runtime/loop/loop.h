@@ -40,13 +40,13 @@ typedef struct loop_frame_t {
 } loop_frame_t;
 
 /// Starts a frame at `now_ns`, the frame's time event
-loop_frame_t loop_begin(loop_t * const loop, const uint64_t now_ns);
+loop_frame_t loop_begin(loop_t *const loop, const uint64_t now_ns);
 
 /// Returns when the next frame is due, given that this one's work ended at `now_ns`
 ///
 /// Frames stay on a fixed grid. A frame that overran gets `now_ns` (no wait), and the grid
 /// restarts there instead of running frames back to back to catch up.
-uint64_t loop_deadline(loop_t * const loop, const uint64_t now_ns);
+uint64_t loop_deadline(loop_t *const loop, const uint64_t now_ns);
 
 #ifdef __cplusplus
 }

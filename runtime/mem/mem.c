@@ -55,9 +55,9 @@ typedef struct mem_block_t {
     // The whole block: header, data and guard; a multiple of mem_align
     size_t size;
     // From mem_alloc; a free block keeps its last owner's, for double-free reports
-    const char * tag;
+    const char *tag;
     // The next free block by address (free blocks only)
-    struct mem_block_t * next_free;
+    struct mem_block_t *next_free;
     // The bytes the caller asked for (used blocks only)
     uint32_t requested;
     // Last, right before the data: writing just before the pointer damages it first
@@ -74,16 +74,16 @@ static size_t round_up(const size_t x, const size_t align) {
     return (x + align - 1) & ~(align - 1);
 }
 
-static unsigned char * block_data(mem_block_t * const block) {
+static unsigned char *block_data(mem_block_t *const block) {
     return (unsigned char *)(block + 1);
 }
 
-static size_t block_data_size(const mem_block_t * const block) {
+static size_t block_data_size(const mem_block_t *const block) {
     return block->size - sizeof(mem_block_t);
 }
 
 // Returns true if all `n` bytes at `p` equal `byte`. They are poisoned before and after.
-static bool bytes_are(const unsigned char * const p, const unsigned char byte, const size_t n) {
+static bool bytes_are(const unsigned char *const p, const unsigned char byte, const size_t n) {
     ASAN_UNPOISON_MEMORY_REGION(p, n);
     size_t i = 0;
     while (i < n && p[i] == byte) {
@@ -97,9 +97,9 @@ static bool bytes_are(const unsigned char * const p, const unsigned char byte, c
 // Region
 //===----------------------------------------------------------------------===//
 
-static void heap_init(mem_budget_t * const budget) {
+static void heap_init(mem_budget_t *const budget) {
     // one free block covering everything; its data stays unwritten until something is allocated there
-    mem_block_t * const block = (mem_block_t *)budget->internal.base;
+    mem_block_t *const block = (mem_block_t *)budget->internal.base;
     ASAN_UNPOISON_MEMORY_REGION(block, sizeof(*block));
     block->size = budget->internal.size;
     block->tag = "(never allocated)";
@@ -111,7 +111,7 @@ static void heap_init(mem_budget_t * const budget) {
     budget->internal.touched = budget->internal.base;
 }
 
-pl_result_e mem_init(mem_t * const mem, const mem_budget_def_t * const defs, mem_budget_t * const budgets, const size_t count) {
+pl_result_e mem_init(mem_t *const mem, const mem_budget_def_t *const defs, mem_budget_t *const budgets, const size_t count) {
     assert(count > 0);
     size_t total = 0;
     for (size_t i = 0; i < count; i++) {
@@ -120,7 +120,7 @@ pl_result_e mem_init(mem_t * const mem, const mem_budget_def_t * const defs, mem
         total += round_up(defs[i].size, mem_budget_align);
     }
 
-    void * base;
+    void *base;
     const pl_result_e result = pl_mem_map(total, &base);
     if (result != pl_result_ok) {
         return result;
@@ -130,9 +130,9 @@ pl_result_e mem_init(mem_t * const mem, const mem_budget_def_t * const defs, mem
     mem->budgets = budgets;
     mem->count = count;
 
-    unsigned char * next = base;
+    unsigned char *next = base;
     for (size_t i = 0; i < count; i++) {
-        mem_budget_t * const budget = &budgets[i];
+        mem_budget_t *const budget = &budgets[i];
         memset(budget, 0, sizeof(*budget));
         budget->internal.name = defs[i].name;
         budget->internal.kind = defs[i].kind;
@@ -148,7 +148,7 @@ pl_result_e mem_init(mem_t * const mem, const mem_budget_def_t * const defs, mem
 }
 
 // Returns the block after `block`, or NULL at the end of the budget; aborts if `block`'s size is impossible
-static mem_block_t * next_block(const mem_budget_t * const budget, mem_block_t * const block) {
+static mem_block_t *next_block(const mem_budget_t *const budget, mem_block_t *const block) {
     const size_t offset = (size_t)((unsigned char *)block - budget->internal.base);
     const size_t left = budget->internal.size - offset;
     if (block->size < MEM_MIN_BLOCK || block->size % mem_align != 0 || block->size > left) {
@@ -157,20 +157,20 @@ static mem_block_t * next_block(const mem_budget_t * const budget, mem_block_t *
     return (block->size == left) ? NULL : (mem_block_t *)((unsigned char *)block + block->size);
 }
 
-size_t mem_shutdown(mem_t * const mem) {
+size_t mem_shutdown(mem_t *const mem) {
     if (mem->base == NULL) {
         return 0; // already shut down
     }
     size_t leaks = 0;
     for (size_t i = 0; i < mem->count; i++) {
-        const mem_budget_t * const budget = &mem->budgets[i];
-        const char * const name = budget->internal.name;
+        const mem_budget_t *const budget = &mem->budgets[i];
+        const char *const name = budget->internal.name;
         const size_t size = budget->internal.size;
         pl_log(pl_log_severity_info, "mem: '%s' peak %zu of %zu (%zu%%)", name, budget->internal.peak, size, budget->internal.peak * 100 / size);
         if (budget->internal.kind != mem_kind_heap) {
             continue;
         }
-        for (mem_block_t * block = (mem_block_t *)budget->internal.base; block != NULL; block = next_block(budget, block)) {
+        for (mem_block_t *block = (mem_block_t *)budget->internal.base; block != NULL; block = next_block(budget, block)) {
             if (block->magic == mem_magic_used) {
                 pl_log(pl_log_severity_warn, "mem: '%s' leak: %zu bytes, tag '%s'", name, (size_t)block->requested, block->tag);
                 leaks++;
@@ -188,14 +188,14 @@ size_t mem_shutdown(mem_t * const mem) {
 // Bump
 //===----------------------------------------------------------------------===//
 
-static void * bump_alloc(mem_budget_t * const budget, const size_t size) {
+static void *bump_alloc(mem_budget_t *const budget, const size_t size) {
     const size_t start = round_up(budget->internal.used, mem_align);
     // 0 bytes still take one, so every pointer is unique
     const size_t n = (size > 0) ? size : 1;
     if (n > budget->internal.size - start) {
         return NULL;
     }
-    unsigned char * const ptr = budget->internal.base + start;
+    unsigned char *const ptr = budget->internal.base + start;
     budget->internal.used = start + n;
     budget->internal.used_blocks++;
     budget->internal.last = ptr;
@@ -206,7 +206,7 @@ static void * bump_alloc(mem_budget_t * const budget, const size_t size) {
     return ptr;
 }
 
-void mem_reset(mem_budget_t * const budget) {
+void mem_reset(mem_budget_t *const budget) {
     if (budget->internal.kind != mem_kind_bump) {
         MEM_FAIL("mem: budget '%s' is a heap budget: free its allocations with mem_free", budget->internal.name);
     }
@@ -219,7 +219,7 @@ void mem_reset(mem_budget_t * const budget) {
     budget->internal.last = NULL;
 }
 
-bool mem_try_grow(mem_budget_t * const budget, void * const ptr, const size_t new_size) {
+bool mem_try_grow(mem_budget_t *const budget, void *const ptr, const size_t new_size) {
     if (budget->internal.kind != mem_kind_bump) {
         MEM_FAIL("mem: budget '%s' is a heap budget: mem_try_grow needs a bump budget", budget->internal.name);
     }
@@ -249,7 +249,7 @@ bool mem_try_grow(mem_budget_t * const budget, void * const ptr, const size_t ne
 //===----------------------------------------------------------------------===//
 
 // Aborts if `block`, reached through the free list, isn't a free block of this budget
-static void heap_check_free(const mem_budget_t * const budget, const mem_block_t * const block) {
+static void heap_check_free(const mem_budget_t *const budget, const mem_block_t *const block) {
     const uintptr_t p = (uintptr_t)block;
     const uintptr_t base = (uintptr_t)budget->internal.base;
     if (p < base || p > base + budget->internal.size - MEM_MIN_BLOCK || (p - base) % mem_align != 0 || block->magic != mem_magic_free) {
@@ -257,15 +257,15 @@ static void heap_check_free(const mem_budget_t * const budget, const mem_block_t
     }
 }
 
-static void * heap_alloc(mem_budget_t * const budget, const size_t size, const char * const tag) {
+static void *heap_alloc(mem_budget_t *const budget, const size_t size, const char *const tag) {
     if (size > UINT32_MAX) {
         return NULL;
     }
     const size_t need = round_up(sizeof(mem_block_t) + size + mem_guard_size, mem_align);
 
     // first fit
-    mem_block_t * prev = NULL;
-    mem_block_t * block = budget->internal.free_list;
+    mem_block_t *prev = NULL;
+    mem_block_t *block = budget->internal.free_list;
     while (block != NULL) {
         heap_check_free(budget, block);
         if (block->size >= need) {
@@ -279,9 +279,9 @@ static void * heap_alloc(mem_budget_t * const budget, const size_t size, const c
     }
 
     // split off the rest if it can hold a block; otherwise it becomes part of this block's guard
-    mem_block_t * next_free = block->next_free;
+    mem_block_t *next_free = block->next_free;
     if (block->size - need >= MEM_MIN_BLOCK) {
-        mem_block_t * const rest = (mem_block_t *)((unsigned char *)block + need);
+        mem_block_t *const rest = (mem_block_t *)((unsigned char *)block + need);
         ASAN_UNPOISON_MEMORY_REGION(rest, sizeof(*rest));
         rest->size = block->size - need;
         rest->tag = block->tag;
@@ -304,7 +304,7 @@ static void * heap_alloc(mem_budget_t * const budget, const size_t size, const c
     block->requested = (uint32_t)size;
     block->magic = mem_magic_used;
 
-    unsigned char * const data = block_data(block);
+    unsigned char *const data = block_data(block);
     const size_t data_size = block_data_size(block);
     ASAN_UNPOISON_MEMORY_REGION(data, data_size);
     memset(data, mem_fill_clean, size);
@@ -320,13 +320,13 @@ static void * heap_alloc(mem_budget_t * const budget, const size_t size, const c
 }
 
 // Turns a valid pointer back into its block; aborts if it isn't a live block of this budget
-static mem_block_t * heap_block_of(const mem_budget_t * const budget, void * const ptr) {
+static mem_block_t *heap_block_of(const mem_budget_t *const budget, void *const ptr) {
     const uintptr_t p = (uintptr_t)ptr;
     const uintptr_t base = (uintptr_t)budget->internal.base;
     if (p < base + sizeof(mem_block_t) || p >= base + budget->internal.size || (p - base) % mem_align != 0) {
         MEM_FAIL("mem: budget '%s': %p is not from this budget", budget->internal.name, ptr);
     }
-    mem_block_t * const block = (mem_block_t *)ptr - 1;
+    mem_block_t *const block = (mem_block_t *)ptr - 1;
     // a header merged into the free block before it is poisoned; every path below that isn't a live block aborts
     ASAN_UNPOISON_MEMORY_REGION(block, sizeof(*block));
     if (block->magic == mem_magic_free) {
@@ -338,7 +338,7 @@ static mem_block_t * heap_block_of(const mem_budget_t * const budget, void * con
     return block;
 }
 
-static void heap_check_guard(const mem_budget_t * const budget, mem_block_t * const block) {
+static void heap_check_guard(const mem_budget_t *const budget, mem_block_t *const block) {
     const size_t requested = block->requested;
     if (!bytes_are(block_data(block) + requested, mem_fill_guard, block_data_size(block) - requested)) {
         MEM_FAIL("mem: budget '%s': guard bytes after a %zu-byte block damaged (tag '%s')", budget->internal.name, requested, block->tag);
@@ -346,24 +346,24 @@ static void heap_check_guard(const mem_budget_t * const budget, mem_block_t * co
 }
 
 // A header absorbed by the free block before it becomes free data
-static void heap_bury(mem_block_t * const block) {
+static void heap_bury(mem_block_t *const block) {
     memset(block, mem_fill_dead, sizeof(*block));
     ASAN_POISON_MEMORY_REGION(block, sizeof(*block));
 }
 
-void mem_free(mem_budget_t * const budget, void * const ptr) {
+void mem_free(mem_budget_t *const budget, void *const ptr) {
     if (ptr == NULL) {
         return;
     }
     if (budget->internal.kind != mem_kind_heap) {
         MEM_FAIL("mem: budget '%s' is a bump budget: use mem_reset, not mem_free", budget->internal.name);
     }
-    mem_block_t * const block = heap_block_of(budget, ptr);
+    mem_block_t *const block = heap_block_of(budget, ptr);
     heap_check_guard(budget, block);
 
     budget->internal.used -= block->size;
     budget->internal.used_blocks--;
-    unsigned char * const data = block_data(block);
+    unsigned char *const data = block_data(block);
     ASAN_UNPOISON_MEMORY_REGION(data, block_data_size(block));
     memset(data, mem_fill_dead, block_data_size(block));
     ASAN_POISON_MEMORY_REGION(data, block_data_size(block));
@@ -371,8 +371,8 @@ void mem_free(mem_budget_t * const budget, void * const ptr) {
     block->magic = mem_magic_free;
 
     // find the free neighbours: the list is in address order
-    mem_block_t * prev = NULL;
-    mem_block_t * next = budget->internal.free_list;
+    mem_block_t *prev = NULL;
+    mem_block_t *next = budget->internal.free_list;
     while (next != NULL) {
         heap_check_free(budget, next);
         if (next > block) {
@@ -404,21 +404,21 @@ void mem_free(mem_budget_t * const budget, void * const ptr) {
     }
 }
 
-void mem_check(const mem_budget_t * const budget) {
+void mem_check(const mem_budget_t *const budget) {
     if (budget->internal.kind != mem_kind_heap) {
         return;
     }
-    const char * const name = budget->internal.name;
+    const char *const name = budget->internal.name;
     size_t used = 0;
     size_t used_blocks = 0;
     size_t free_blocks = 0;
-    const mem_block_t * expected_free = budget->internal.free_list;
+    const mem_block_t *expected_free = budget->internal.free_list;
     bool prev_free = false;
 
-    mem_block_t * block = (mem_block_t *)budget->internal.base;
+    mem_block_t *block = (mem_block_t *)budget->internal.base;
     while (block != NULL) {
         // validates block->size before anything below relies on it
-        mem_block_t * const next = next_block(budget, block);
+        mem_block_t *const next = next_block(budget, block);
         if (block->magic == mem_magic_used) {
             if (block->requested > block->size - MEM_MIN_BLOCK) {
                 MEM_FAIL("mem: budget '%s': damaged block header at %p (requested %zu)", name, (void *)block, (size_t)block->requested);
@@ -436,9 +436,9 @@ void mem_check(const mem_budget_t * const budget) {
             }
             expected_free = block->next_free;
             // memory above `touched` was never written, so it isn't 0xDD
-            unsigned char * const data = block_data(block);
-            unsigned char * const end = data + block_data_size(block);
-            unsigned char * const written_end = (end < budget->internal.touched) ? end : budget->internal.touched;
+            unsigned char *const data = block_data(block);
+            unsigned char *const end = data + block_data_size(block);
+            unsigned char *const written_end = (end < budget->internal.touched) ? end : budget->internal.touched;
             if (data < written_end && !bytes_are(data, mem_fill_dead, (size_t)(written_end - data))) {
                 MEM_FAIL("mem: budget '%s': freed memory at %p was written after free (last tag '%s')", name, (void *)data, block->tag);
             }
@@ -462,21 +462,21 @@ void mem_check(const mem_budget_t * const budget) {
 // Both kinds
 //===----------------------------------------------------------------------===//
 
-void * mem_try_alloc(mem_budget_t * const budget, const size_t size, const char * const tag) {
+void *mem_try_alloc(mem_budget_t *const budget, const size_t size, const char *const tag) {
     assert(tag != NULL);
     // also keeps the size arithmetic in both allocators from overflowing
     if (size > budget->internal.size) {
         return NULL;
     }
-    void * const ptr = (budget->internal.kind == mem_kind_bump) ? bump_alloc(budget, size) : heap_alloc(budget, size, tag);
+    void *const ptr = (budget->internal.kind == mem_kind_bump) ? bump_alloc(budget, size) : heap_alloc(budget, size, tag);
     if (budget->internal.used > budget->internal.peak) {
         budget->internal.peak = budget->internal.used;
     }
     return ptr;
 }
 
-void * mem_alloc(mem_budget_t * const budget, const size_t size, const char * const tag) {
-    void * const ptr = mem_try_alloc(budget, size, tag);
+void *mem_alloc(mem_budget_t *const budget, const size_t size, const char *const tag) {
+    void *const ptr = mem_try_alloc(budget, size, tag);
     if (ptr == NULL) {
         const mem_stats_t stats = mem_get_stats(budget);
         pl_log(pl_log_severity_error, "mem: budget '%s' is full: wanted %zu bytes (tag '%s')", budget->internal.name, size, tag);
@@ -485,7 +485,7 @@ void * mem_alloc(mem_budget_t * const budget, const size_t size, const char * co
     return ptr;
 }
 
-mem_stats_t mem_get_stats(const mem_budget_t * const budget) {
+mem_stats_t mem_get_stats(const mem_budget_t *const budget) {
     mem_stats_t stats = {
         .size = budget->internal.size,
         .used = budget->internal.used,
@@ -497,7 +497,7 @@ mem_stats_t mem_get_stats(const mem_budget_t * const budget) {
     if (budget->internal.kind == mem_kind_bump) {
         stats.largest_free = budget->internal.size - round_up(budget->internal.used, mem_align);
     } else {
-        for (const mem_block_t * block = budget->internal.free_list; block != NULL; block = block->next_free) {
+        for (const mem_block_t *block = budget->internal.free_list; block != NULL; block = block->next_free) {
             heap_check_free(budget, block);
             if (block->size - MEM_MIN_BLOCK > stats.largest_free) {
                 stats.largest_free = block->size - MEM_MIN_BLOCK;

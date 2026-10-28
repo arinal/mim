@@ -14,7 +14,7 @@ int main(void) {
     CHECK(largest_at_start > 60 * 1024 && largest_at_start < 64 * 1024);
 
     // round trip: aligned, filled with the "clean" pattern, writable
-    unsigned char * const a = mem_alloc(&heap, 100, "a");
+    unsigned char *const a = mem_alloc(&heap, 100, "a");
     CHECK((uintptr_t)a % 16 == 0);
     CHECK(a[0] == 0xCD && a[99] == 0xCD);
     a[0] = 1;
@@ -31,17 +31,17 @@ int main(void) {
     mem_check(&heap);
 
     // 0 bytes still gives a unique pointer
-    void * const z1 = mem_alloc(&heap, 0, "z1");
-    void * const z2 = mem_alloc(&heap, 0, "z2");
+    void *const z1 = mem_alloc(&heap, 0, "z1");
+    void *const z2 = mem_alloc(&heap, 0, "z2");
     CHECK(z1 != NULL && z2 != NULL && z1 != z2);
     mem_free(&heap, z1);
     mem_free(&heap, z2);
     mem_check(&heap);
 
     // first fit: a freed block of the right size is reused
-    unsigned char * const x = mem_alloc(&heap, 100, "x");
-    unsigned char * const y = mem_alloc(&heap, 100, "y");
-    unsigned char * const w = mem_alloc(&heap, 100, "w");
+    unsigned char *const x = mem_alloc(&heap, 100, "x");
+    unsigned char *const y = mem_alloc(&heap, 100, "y");
+    unsigned char *const w = mem_alloc(&heap, 100, "w");
     CHECK(x < y && y < w);
     mem_free(&heap, x);
     CHECK(mem_alloc(&heap, 100, "x again") == x);
@@ -60,7 +60,7 @@ int main(void) {
 
     // largest_free is exact: it fits, one byte more doesn't
     CHECK(mem_try_alloc(&heap, largest_at_start + 1, "too big") == NULL);
-    unsigned char * const all = mem_alloc(&heap, largest_at_start, "all");
+    unsigned char *const all = mem_alloc(&heap, largest_at_start, "all");
     all[largest_at_start - 1] = 1;
     CHECK(mem_get_stats(&heap).largest_free == 0);
     CHECK(mem_try_alloc(&heap, 0, "nothing left") == NULL);

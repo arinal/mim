@@ -15,7 +15,7 @@ void app_init(void) {
         if (old == SIZE_MAX) {
             break;
         }
-        uint64_t * const page = (uint64_t *)(old * 65536);
+        uint64_t *const page = (uint64_t *)(old * 65536);
         for (size_t i = 0; i < 65536 / 8; i++) {
             all_zero &= (page[i] == 0);
             page[i] = UINT64_MAX;
@@ -24,7 +24,7 @@ void app_init(void) {
     }
     char zero[] = "grew 0000 pages, all zero";
     char dirty[] = "grew 0000 pages, some not zero";
-    char * const msg = all_zero ? zero : dirty;
+    char *const msg = all_zero ? zero : dirty;
     for (int i = 8; i >= 5; i--) {
         msg[i] = (char)('0' + pages % 10);
         pages /= 10;

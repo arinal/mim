@@ -8,8 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 
-static void write_file(const char * const path, const char * const data, const size_t len) {
-    FILE * const f = fopen(path, "wb");
+static void write_file(const char *const path, const char *const data, const size_t len) {
+    FILE *const f = fopen(path, "wb");
     CHECK(f != NULL);
     CHECK(fwrite(data, 1, len, f) == len);
     CHECK(fclose(f) == 0);

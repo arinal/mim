@@ -17,7 +17,7 @@ constexpr size_t page_size = 65536;
 // allocates in app_init; a C++ UI that frees needs a free list.
 size_t next;
 
-void * bump(size_t size) {
+void *bump(size_t size) {
     if (next == 0) {
         next = reinterpret_cast<size_t>(&__heap_base);
     }
@@ -40,11 +40,11 @@ void * bump(size_t size) {
 
 } // namespace
 
-void * operator new(size_t size) {
+void *operator new(size_t size) {
     return bump(size);
 }
 
-void * operator new[](size_t size) {
+void *operator new[](size_t size) {
     return bump(size);
 }
 
@@ -63,26 +63,26 @@ void operator delete[](void *, size_t) noexcept {
 // clang turns loops into calls to these, even with -nostdlib
 extern "C" {
 
-void * memset(void * dst, int c, size_t n) {
-    unsigned char * d = static_cast<unsigned char *>(dst);
+void *memset(void *dst, int c, size_t n) {
+    unsigned char *d = static_cast<unsigned char *>(dst);
     while (n-- > 0) {
         *d++ = static_cast<unsigned char>(c);
     }
     return dst;
 }
 
-void * memcpy(void * dst, const void * src, size_t n) {
-    unsigned char * d = static_cast<unsigned char *>(dst);
-    const unsigned char * s = static_cast<const unsigned char *>(src);
+void *memcpy(void *dst, const void *src, size_t n) {
+    unsigned char *d = static_cast<unsigned char *>(dst);
+    const unsigned char *s = static_cast<const unsigned char *>(src);
     while (n-- > 0) {
         *d++ = *s++;
     }
     return dst;
 }
 
-void * memmove(void * dst, const void * src, size_t n) {
-    unsigned char * d = static_cast<unsigned char *>(dst);
-    const unsigned char * s = static_cast<const unsigned char *>(src);
+void *memmove(void *dst, const void *src, size_t n) {
+    unsigned char *d = static_cast<unsigned char *>(dst);
+    const unsigned char *s = static_cast<const unsigned char *>(src);
     if (d < s) {
         return memcpy(dst, src, n);
     }

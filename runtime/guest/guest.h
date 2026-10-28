@@ -41,16 +41,16 @@ struct M3Function;
 /// One loaded guest; the caller owns the storage, the fields are private to guest.c
 typedef struct guest_t {
     struct {
-        mem_budget_t * vm;
-        mem_budget_t * linear;
+        mem_budget_t *vm;
+        mem_budget_t *linear;
         // the guest's linear memory, the only allocation in `linear`
-        void * linear_block;
+        void *linear_block;
         // guest_screen_width × guest_screen_height, filled by mim.present
-        uint32_t * framebuffer;
-        struct M3Environment * env;
-        struct M3Runtime * rt;
-        struct M3Function * tick;
-        struct M3Function * shutdown;
+        uint32_t *framebuffer;
+        struct M3Environment *env;
+        struct M3Runtime *rt;
+        struct M3Function *tick;
+        struct M3Function *shutdown;
         // false once the guest is rejected or has trapped
         bool alive;
         // true once app_tick has returned 0
@@ -70,7 +70,7 @@ typedef struct guest_t {
 ///
 /// Returns false, after logging why, if the module is rejected or `app_init` traps.
 /// Either way, call `guest_unload` afterwards.
-bool guest_load(guest_t * const guest, mem_budget_t * const vm, mem_budget_t * const linear, uint32_t * const framebuffer, const void * const wasm, const size_t size);
+bool guest_load(guest_t *const guest, mem_budget_t *const vm, mem_budget_t *const linear, uint32_t *const framebuffer, const void *const wasm, const size_t size);
 
 /// What guest_tick found
 typedef enum guest_status_e {
@@ -83,12 +83,12 @@ typedef enum guest_status_e {
 } guest_status_e;
 
 /// Calls `app_tick`, unless the guest has already quit or died
-guest_status_e guest_tick(guest_t * const guest, const uint64_t abs_time_ms, const float dt_seconds);
+guest_status_e guest_tick(guest_t *const guest, const uint64_t abs_time_ms, const float dt_seconds);
 
 /// Calls `app_shutdown` if the guest is still alive, then frees everything it used
 ///
 /// Both budgets are empty afterwards.
-void guest_unload(guest_t * const guest);
+void guest_unload(guest_t *const guest);
 
 #ifdef __cplusplus
 }

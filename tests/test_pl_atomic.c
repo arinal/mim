@@ -10,7 +10,7 @@ enum {
 
 static pl_atomic_u32_t counter;
 
-static int increment(void * const arg) {
+static int increment(void *const arg) {
     (void)arg;
     for (int i = 0; i < increments_per_thread; ++i) {
         pl_atomic_fetch_add(&counter, 1, pl_memory_order_relaxed);
@@ -23,7 +23,7 @@ static int increment(void * const arg) {
 static int data;
 static pl_atomic_u32_t ready;
 
-static int producer(void * const arg) {
+static int producer(void *const arg) {
     (void)arg;
     data = 42;
     pl_atomic_store(&ready, 1, pl_memory_order_release);

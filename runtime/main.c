@@ -30,13 +30,13 @@ static const mem_budget_def_t budget_defs[budget_count] = {
 };
 
 // Reads the whole file at `path` into `budget`; logs and returns NULL on failure
-static void * read_file(mem_budget_t * const budget, const char * const path, size_t * const out_size) {
+static void *read_file(mem_budget_t *const budget, const char *const path, size_t *const out_size) {
     size_t size;
     if (pl_file_size(path, &size) != pl_result_ok) {
         pl_log(pl_log_severity_error, "mim: can't read '%s'", path);
         return NULL;
     }
-    void * const data = mem_try_alloc(budget, size, "wasm file");
+    void *const data = mem_try_alloc(budget, size, "wasm file");
     if (data == NULL) {
         pl_log(pl_log_severity_error, "mim: '%s' (%zu bytes) doesn't fit in budget 'files'", path, size);
         return NULL;
@@ -50,7 +50,7 @@ static void * read_file(mem_budget_t * const budget, const char * const path, si
 }
 
 // Returns true if the user asked to stop
-static bool has_quit(const pl_event_t * const events, const size_t count) {
+static bool has_quit(const pl_event_t *const events, const size_t count) {
     for (size_t i = 0; i < count; i++) {
         if (events[i].type == pl_event_quit) {
             return true;
@@ -61,7 +61,7 @@ static bool has_quit(const pl_event_t * const events, const size_t count) {
 
 // Runs frames until the guest quits or dies, or the user asks to stop; returns false if the guest died.
 // Shows each frame on `display`, unless it's NULL.
-static bool run(guest_t * const guest, pl_display_t * const display, const uint32_t * const framebuffer) {
+static bool run(guest_t *const guest, pl_display_t *const display, const uint32_t *const framebuffer) {
     loop_t loop = {0};
     pl_event_t events[8];
     guest_status_e status = guest_running;
@@ -80,13 +80,13 @@ static bool run(guest_t * const guest, pl_display_t * const display, const uint3
     return status != guest_dead;
 }
 
-int main(int argc, char ** argv) {
+int main(int argc, char **argv) {
     const bool headless = argc == 3 && strcmp(argv[1], "--headless") == 0;
     if (argc != 2 && !headless) {
         pl_log(pl_log_severity_error, "usage: mim [--headless] <app.wasm>");
         return 2;
     }
-    const char * const path = argv[argc - 1];
+    const char *const path = argv[argc - 1];
     mem_t mem;
     mem_budget_t budgets[budget_count];
     if (mem_init(&mem, budget_defs, budgets, budget_count) != pl_result_ok) {
@@ -96,15 +96,15 @@ int main(int argc, char ** argv) {
 
     bool ok = false;
     size_t size;
-    void * const wasm = read_file(&budgets[budget_files], path, &size);
+    void *const wasm = read_file(&budgets[budget_files], path, &size);
     if (wasm != NULL) {
         // black until the guest presents a frame
         const size_t fb_size = (size_t)guest_screen_width * guest_screen_height * 4;
-        uint32_t * const framebuffer = mem_alloc(&budgets[budget_framebuffer], fb_size, "framebuffer");
+        uint32_t *const framebuffer = mem_alloc(&budgets[budget_framebuffer], fb_size, "framebuffer");
         memset(framebuffer, 0, fb_size);
 
         pl_display_t storage;
-        pl_display_t * display = NULL;
+        pl_display_t *display = NULL;
         if (!headless) {
             if (pl_display_open(&storage, "mim", guest_screen_width, guest_screen_height) == pl_result_ok) {
                 display = &storage;

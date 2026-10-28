@@ -16,7 +16,7 @@ void app_init() {
     mim::log(mim::Level::info, "hello");
     // 400 KB: more than the guest starts with, so this grows linear memory
     const uint32_t count = 100000;
-    uint32_t * const numbers = new uint32_t[count];
+    uint32_t *const numbers = new uint32_t[count];
     for (uint32_t i = 0; i < count; i++) {
         numbers[i] = i;
     }
