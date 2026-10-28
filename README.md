@@ -23,7 +23,7 @@ flowchart TB
             bounce_rust["<b>bounce_rust</b><br/>a box bouncing in a window"]
             hello_rust ~~~ hello_cpp ~~~ bounce_rust
         end
-        abi["<b>exports:</b> app_init · app_tick · app_shutdown<br/><b>imports:</b> mim.log · mim.present"]
+        abi["<b>exports:</b> app_init · app_tick · app_shutdown<br/><b>imports:</b> mim.log · mim.present, listed in sdk/mim.ffi"]
         list --- abi
     end
 
@@ -68,13 +68,15 @@ not built yet.
 
 - **The guest apps** are Rust or C++ compiled to WASM with `sdk/rust` or `sdk/cpp`, and the
   host doesn't trust them. They all have the same exports, which the host calls, and can only
-  call back through the `mim.*` imports. The host runs one at a time.
+  call back through the `mim.*` imports listed in `sdk/mim.ffi`. The host runs one at a time.
 - **`extern/wasm3`** is the WASM interpreter that runs them, vendored with a small patch
   marked MIM. It calls the exports and hands each import call to `guest/`.
 - **`runtime/`** is the host:
   - `main.c`: the main loop, one `app_tick` per frame, then show it.
   - `guest/`: loads the .wasm in wasm3, checks its exports, links the imports, and turns a
-    guest crash into a dead guest instead of a dead host.
+    guest crash into a dead guest instead of a dead host. The import glue, `ffi.h` and `ffi.c`,
+    is generated from `sdk/mim.ffi` by [`tools/ffigen`](tools/ffigen/README.md), along with
+    both SDKs' declarations; the handlers (`host_log`, `host_present`) are written by hand.
   - `loop/`: the frame clock, with 60 Hz deadlines and a `dt` for each frame. It makes no OS
     calls: it's handed the time, so a test can hand it any time it likes.
   - `mem/`: one big block of memory, split into fixed budgets.
@@ -159,7 +161,7 @@ flowchart LR
     S7["7 · debugging toolkit<br/>(all along)"]
 
     classDef done fill:#2da44e,stroke:#1a7f37,color:#fff
-    class S0,S1,S2,S3,S4a done
+    class S0,S1,S2,S3,S4a,S4b0 done
 ```
 
 | | Stage | What it is | Done when |
@@ -169,7 +171,7 @@ flowchart LR
 | ✅ | **2 · Memory budgets** | **One block split into named budgets, with hand-written bump and free-list allocators, guard bytes and a leak report.** | **A fuzzer hammers alloc/free with no crash, and going over a budget fails loudly.** |
 | ✅ | **3 · WASM host** | **wasm3 runs a Rust and a C++ app. The host checks the exports and every pointer the guest hands over.** | **Both apps give the same log, and hostile apps get rejected, not crashed into.** |
 | ✅ | **4a · Main loop + window** | **A 60 Hz loop with a real `dt`, Ctrl-C and window close quit cleanly, the guest pushes 1280×720 frames into an SDL3 window (or runs headless).** | **A fake-clock test checks every `dt` and frame, and bad `mim.present` calls trap.** |
-| ⬜ | 4b.0 · FFI | One table, `sdk/mim.ffi`, lists every import and shared constant. A small generator writes the host's linking code and both SDKs' declarations from it, and checks guest buffers before the handler runs. | Editing the table without regenerating fails CI, and a handler with the wrong argument types doesn't compile. |
+| ✅ | **4b.0 · FFI** | **One table, `sdk/mim.ffi`, lists every import and shared constant. A small generator writes the host's linking code and both SDKs' declarations from it, and checks guest buffers before the handler runs.** | **Editing the table without regenerating fails CI, and a handler with the wrong argument types doesn't compile.** |
 | ⬜ | 4b · Canvas | A 2D drawing API shaped like HTML5 Canvas, done in software: paths, fills, anti-aliasing, images, text from a glyph atlas. | Golden-image tests per primitive, under 16 ms a frame. |
 | ⬜ | 4c · App UI | A TV-style UI inside the guest: one state, actions, immediate-mode screens, D-pad focus, scrolling tile rows. Built in Rust and in C++. | A scripted "down, down, OK" replay matches a golden image. |
 | ⬜ | 4d · GPU backend | A tiny `gpu_*` interface with an OpenGL ES backend. The software canvas stays as the reference. | Both renderers draw the same scene within a tolerance. |
@@ -190,14 +192,17 @@ rustup target add wasm32v1-none
 cmake --preset debug
 cmake --build build/debug
 
-./build/debug/mim build/debug/guests/bounce_rust.wasm              # a box bouncing in a window
-./build/debug/mim --headless build/debug/guests/hello_rust.wasm   # logs a few lines and quits
+./build/debug/mim build/debug/guests/bounce_rust.wasm            # a box bouncing in a window
+./build/debug/mim --headless build/debug/guests/hello_rust.wasm  # logs a few lines and quits
 
 ctest --test-dir build/debug --output-on-failure
 ```
 
 No display? `mim` says so and keeps running headless. Other presets: `clang`, `asan`, `tsan`,
 `valgrind`, `fuzz`. Everything about the tests is in [docs/testing.md](docs/testing.md).
+
+Changing what a guest can import: edit `sdk/mim.ffi`, run `cargo run -p ffigen`, and commit the
+table with the files it rewrites. [tools/ffigen](tools/ffigen/README.md) has the steps.
 
 ## Where things are
 
