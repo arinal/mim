@@ -19,8 +19,6 @@
 enum {
     // wasm3's value stack: the WASM operand stack and call frames
     guest_stack_size = 512 * 1024,
-    // a longer log message is cut
-    guest_log_max = 200,
 };
 
 // ponytail: one guest at a time, because wasm3's allocation hooks take no context.
@@ -31,25 +29,17 @@ static guest_t *g_guest;
 // Imports
 //===----------------------------------------------------------------------===//
 
-// mim.log(i32 level, i32 ptr, i32 len)
-static const void *mim_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
-    (void)ctx;
-    // each argument is in its own 64-bit slot
-    const uint32_t level = *(const uint32_t *)&sp[0];
-    const uint32_t ptr = *(const uint32_t *)&sp[1];
-    const uint32_t len = *(const uint32_t *)&sp[2];
+// The thunks in ffi.c read the arguments and check `bytes`; these do the rest
+
+const char *host_log(const guest_mem_t *const mem, const uint32_t level, const uint8_t *const text, const uint32_t text_len) {
+    (void)mem;
     if (level > pl_log_severity_error) {
         return "mim.log: bad level";
     }
-    // written so it can't overflow: ptr + len could wrap in 32 bits
-    const size_t size = m3_GetMemorySize(runtime);
-    if (len > size || ptr > size - len) {
-        return "mim.log: buffer outside guest memory";
-    }
 
     char buf[guest_log_max + 4];
-    const size_t n = (len < guest_log_max) ? len : guest_log_max;
-    memcpy(buf, (const unsigned char *)mem + ptr, n);
+    const size_t n = (text_len < guest_log_max) ? text_len : guest_log_max;
+    memcpy(buf, text, n);
     // control bytes would let a guest forge host log lines or send terminal escapes
     for (size_t i = 0; i < n; i++) {
         const unsigned char c = (unsigned char)buf[i];
@@ -58,41 +48,25 @@ static const void *mim_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *s
         }
     }
     size_t end = n;
-    if (len > n) {
+    if (text_len > n) {
         memcpy(buf + n, "...", 3);
         end += 3;
     }
     pl_log((pl_log_severity_e)level, "app: %.*s", (int)end, buf);
-    return m3Err_none;
+    return NULL;
 }
 
-// mim.present(i32 ptr, i32 width, i32 height)
-static const void *mim_present(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
-    (void)ctx;
-    const uint32_t ptr = *(const uint32_t *)&sp[0];
-    const uint32_t width = *(const uint32_t *)&sp[1];
-    const uint32_t height = *(const uint32_t *)&sp[2];
+const char *host_present(const guest_mem_t *const mem, const uint32_t pixels, const uint32_t width, const uint32_t height) {
     if (width != guest_screen_width || height != guest_screen_height) {
         return "mim.present: frame must be 1280x720";
     }
     const size_t len = (size_t)guest_screen_width * guest_screen_height * 4;
-    const size_t size = m3_GetMemorySize(runtime);
-    if (len > size || ptr > size - len) {
+    if (!guest_mem_has(mem, pixels, len)) {
         return "mim.present: frame outside guest memory";
     }
-    // ptr needn't be aligned: memcpy doesn't care. The top byte of each pixel is ignored later.
-    memcpy(g_guest->internal.framebuffer, (const unsigned char *)mem + ptr, len);
-    return m3Err_none;
-}
-
-static const void *mim_add(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
-    (void)runtime;
-    (void)ctx;
-    (void)mem;
-    const uint32_t a = (const uint32_t)sp[1];
-    const uint32_t b = (const uint32_t)sp[2];
-    sp[0] = a + b;
-    return m3Err_none;
+    // pixels needn't be aligned: memcpy doesn't care. The top byte of each pixel is ignored later.
+    memcpy(g_guest->internal.framebuffer, mem->base + pixels, len);
+    return NULL;
 }
 
 //===----------------------------------------------------------------------===//
@@ -147,13 +121,16 @@ static bool call(guest_t *const guest, IM3Function const f, ...) {
     return guest->internal.alive;
 }
 
-// Links mim.<name>; logs and returns false if the guest imports it with another signature.
-// A guest that doesn't import it is fine.
-static bool link_import(IM3Module const module, const char *const name, const char *const signature, M3RawCall const fn) {
-    const M3Result result = m3_LinkRawFunction(module, "mim", name, signature, fn);
-    if (result != m3Err_none && result != m3Err_functionLookupFailed) {
-        pl_log(pl_log_severity_error, "guest: rejected: import 'mim.%s': %s", name, result);
-        return false;
+// Links every mim.<name> the guest imports; logs and returns false if it imports one with
+// another signature. A guest needn't import them all.
+static bool link_imports(IM3Module const module) {
+    for (size_t i = 0; i < guest_import_count; i++) {
+        const guest_import_t *const import = &guest_imports[i];
+        const M3Result result = m3_LinkRawFunction(module, "mim", import->name, import->signature, import->thunk);
+        if (result != m3Err_none && result != m3Err_functionLookupFailed) {
+            pl_log(pl_log_severity_error, "guest: rejected: import 'mim.%s': %s", import->name, result);
+            return false;
+        }
     }
     return true;
 }
@@ -187,7 +164,7 @@ static bool load_module(guest_t *const guest, const void *const wasm, const size
         return false;
     }
 
-    return link_import(module, "log", "v(iii)", mim_log) && link_import(module, "present", "v(iii)", mim_present);
+    return link_imports(module);
 }
 
 bool guest_load(

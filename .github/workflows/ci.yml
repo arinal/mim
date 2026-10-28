@@ -23,6 +23,9 @@ jobs:
       - name: format
         if: matrix.preset == 'debug'
         run: git ls-files '*.c' '*.h' '*.cpp' ':!extern' | xargs clang-format --dry-run -Werror
+      - name: the generated import glue matches sdk/mim.ffi
+        if: matrix.preset == 'debug'
+        run: cargo test --quiet -p ffigen && cargo run --quiet -p ffigen && git diff --exit-code
       - name: only platform/<port> and tests may include OS headers (SDL counts as one)
         if: matrix.preset == 'debug'
         run: |

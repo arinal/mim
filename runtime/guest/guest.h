@@ -7,11 +7,7 @@
 //   app_tick(i64 abs_time_ms, f32 dt_seconds) -> i32
 //                                                 called by guest_tick; 0 = quit
 //   app_shutdown()                                called by guest_unload
-// and may import, from module "mim":
-//   log(i32 level, i32 ptr, i32 len)              level 0 debug ... 3 error
-//   present(i32 ptr, i32 width, i32 height)       copies a frame of 0x00RRGGBB
-//                                                 pixels to the host; 1280 x 720
-//   add(i32 a, i32 b) -> i32                      a + b, wrapping
+// and may import the functions listed in sdk/mim.ffi, from module "mim".
 //
 // Rules:
 // * A guest can fail, but never takes the host down. A bad module is
@@ -23,17 +19,12 @@
 
 #pragma once
 
+#include "runtime/guest/ffi.h"
 #include "runtime/mem/mem.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-enum {
-    /// The size every guest draws at
-    guest_screen_width = 1280,
-    guest_screen_height = 720,
-};
 
 struct M3Environment;
 struct M3Runtime;

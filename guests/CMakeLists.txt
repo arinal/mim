@@ -16,7 +16,7 @@ set(cpp_sources ${cpp_sdk}/mim.cpp ${CMAKE_CURRENT_SOURCE_DIR}/hello_cpp/hello.c
 add_custom_command(
     OUTPUT ${MIM_GUEST_DIR}/hello_cpp.wasm
     COMMAND ${MIM_WASM_CLANG} -x c++ -std=c++17 -fno-exceptions -fno-rtti ${wasm_flags} -I${cpp_sdk} -o ${MIM_GUEST_DIR}/hello_cpp.wasm ${cpp_sources}
-    DEPENDS ${cpp_sources} ${cpp_sdk}/mim.h
+    DEPENDS ${cpp_sources} ${cpp_sdk}/mim.h ${cpp_sdk}/ffi.h
     VERBATIM)
 set(outputs ${MIM_GUEST_DIR}/hello_cpp.wasm)
 
@@ -44,8 +44,8 @@ foreach(case IN LISTS evil_cases)
     set(out ${MIM_GUEST_DIR}/evil_${case}.wasm)
     add_custom_command(
         OUTPUT ${out}
-        COMMAND ${MIM_WASM_CLANG} -std=c99 ${wasm_flags} ${evil_${case}_flags} -o ${out} ${evil_${case}_sources}
-        DEPENDS ${evil_${case}_sources} ${evil_dir}/evil.h
+        COMMAND ${MIM_WASM_CLANG} -std=c99 ${wasm_flags} -I${cpp_sdk} ${evil_${case}_flags} -o ${out} ${evil_${case}_sources}
+        DEPENDS ${evil_${case}_sources} ${evil_dir}/evil.h ${cpp_sdk}/ffi.h
         VERBATIM)
     list(APPEND outputs ${out})
 endforeach()

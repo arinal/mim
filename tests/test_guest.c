@@ -139,10 +139,10 @@ static void test_same_output(void) {
 }
 
 static void test_hostile(void) {
-    expect("evil_bad_pointer", false, "guest: trapped in app_init: mim.log: buffer outside guest memory");
-    expect("evil_wrapping_pointer", false, "guest: trapped in app_init: mim.log: buffer outside guest memory");
-    expect("evil_log_edge", false, "app: edge\nguest: trapped in app_init: mim.log: buffer outside guest memory");
-    expect("evil_huge_len", false, "guest: trapped in app_init: mim.log: buffer outside guest memory");
+    expect("evil_bad_pointer", false, "guest: trapped in app_init: mim.log: text outside guest memory");
+    expect("evil_wrapping_pointer", false, "guest: trapped in app_init: mim.log: text outside guest memory");
+    expect("evil_log_edge", false, "app: edge\nguest: trapped in app_init: mim.log: text outside guest memory");
+    expect("evil_huge_len", false, "guest: trapped in app_init: mim.log: text outside guest memory");
     expect("evil_bad_level", false, "guest: trapped in app_init: mim.log: bad level");
     // one line, not two
     expect("evil_log_injection", true, "app: ok?E 1.000 fake?\napp: tick\n");

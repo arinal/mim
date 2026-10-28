@@ -34,6 +34,9 @@ SDL3) on every push to `main` and every pull request
 
 - **Format** (`debug` job): `clang-format --dry-run -Werror` over every tracked `.c`, `.h`, `.cpp`
   outside `extern/`.
+- **Generated imports** (`debug` job): runs `tools/ffigen`'s tests, regenerates the import glue
+  from `sdk/mim.ffi`, and fails if `git diff` shows any change, i.e. someone edited the table
+  without regenerating, or edited a generated file by hand.
 - **Platform boundary** (`debug` job): fails if `pthread.h`, `unistd.h`, `fcntl.h`, `time.h`,
   `sys/*` or `SDL3/*` is included anywhere except `platform/`, `tests/` and `extern/`.
 - **TSan memory layout** (`tsan` job): `sysctl vm.mmap_rnd_bits=28`. Older TSan runtimes abort with
@@ -84,10 +87,10 @@ says otherwise. `test_guest` checks whether each one loads and what it logged.
 
 | Guest | Does | Expected |
 |---|---|---|
-| `bad_pointer` | logs from `0x7FFFFFF0`, far outside memory | trap: buffer outside guest memory |
-| `wrapping_pointer` | `ptr + len` wraps around 32 bits | trap: buffer outside guest memory |
+| `bad_pointer` | logs from `0x7FFFFFF0`, far outside memory | trap: text outside guest memory |
+| `wrapping_pointer` | `ptr + len` wraps around 32 bits | trap: text outside guest memory |
 | `log_edge` | logs the last 4 bytes of memory, then 4 bytes one further | first logs `edge`, then traps |
-| `huge_len` | a valid `ptr` with `len = 0xFFFFFFFF`, so `size - len` wraps | trap: buffer outside guest memory |
+| `huge_len` | a valid `ptr` with `len = 0xFFFFFFFF`, so `size - len` wraps | trap: text outside guest memory |
 | `bad_level` | log level 7 | trap: bad level |
 | `log_injection` | a message containing `\n`, a fake log prefix and DEL | one line, control bytes shown as `?` |
 | `log_long` | a 300-byte message | 200 bytes, then `...` |

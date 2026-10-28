@@ -149,7 +149,7 @@ Each stage only counts as done when there's an automated test in CI that would f
 ```mermaid
 flowchart LR
     S0["0 · skeleton + CI"] --> S1["1 · platform layer"] --> S2["2 · memory budgets"] --> S3["3 · WASM host"]
-    S3 --> S4a["4a · main loop + window"] --> S4b["4b · canvas"] --> S4c["4c · app UI"]
+    S3 --> S4a["4a · main loop + window"] --> S4b0["4b.0 · FFI"] --> S4b["4b · canvas"] --> S4c["4c · app UI"]
     S4b --> S4d["4d · GPU backend"]
     S4a --> S5["5 · input"]
     S3 --> S6["6 · networking"]
@@ -169,6 +169,7 @@ flowchart LR
 | ✅ | **2 · Memory budgets** | **One block split into named budgets, with hand-written bump and free-list allocators, guard bytes and a leak report.** | **A fuzzer hammers alloc/free with no crash, and going over a budget fails loudly.** |
 | ✅ | **3 · WASM host** | **wasm3 runs a Rust and a C++ app. The host checks the exports and every pointer the guest hands over.** | **Both apps give the same log, and hostile apps get rejected, not crashed into.** |
 | ✅ | **4a · Main loop + window** | **A 60 Hz loop with a real `dt`, Ctrl-C and window close quit cleanly, the guest pushes 1280×720 frames into an SDL3 window (or runs headless).** | **A fake-clock test checks every `dt` and frame, and bad `mim.present` calls trap.** |
+| ⬜ | 4b.0 · FFI | One table, `sdk/mim.ffi`, lists every import and shared constant. A small generator writes the host's linking code and both SDKs' declarations from it, and checks guest buffers before the handler runs. | Editing the table without regenerating fails CI, and a handler with the wrong argument types doesn't compile. |
 | ⬜ | 4b · Canvas | A 2D drawing API shaped like HTML5 Canvas, done in software: paths, fills, anti-aliasing, images, text from a glyph atlas. | Golden-image tests per primitive, under 16 ms a frame. |
 | ⬜ | 4c · App UI | A TV-style UI inside the guest: one state, actions, immediate-mode screens, D-pad focus, scrolling tile rows. Built in Rust and in C++. | A scripted "down, down, OK" replay matches a golden image. |
 | ⬜ | 4d · GPU backend | A tiny `gpu_*` interface with an OpenGL ES backend. The software canvas stays as the reference. | Both renderers draw the same scene within a tolerance. |
@@ -203,7 +204,9 @@ No display? `mim` says so and keeps running headless. Other presets: `clang`, `a
 ```
 platform/   pl.h (the whole OS interface) and its Linux version
 runtime/    the host: main loop, guest loader, frame clock, memory budgets
-sdk/        what an app links against: sdk/rust (the mim crate) and sdk/cpp (mim.h)
+sdk/        what an app links against: sdk/rust (the mim crate) and sdk/cpp (mim.h), and
+            sdk/mim.ffi, the table every import is generated from
+tools/      ffigen: writes the import glue for the host and both SDKs from sdk/mim.ffi
 guests/     sample apps, plus guests/evil: hostile ones the tests throw at the host
 tests/      one small executable per test, plus test_mim.sh for the real binary
 extern/     wasm3, vendored with a small patch marked MIM

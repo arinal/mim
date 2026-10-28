@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+#
+# Every function a guest can import from WASM module "mim", and the constants both sides share.
+# Edit this, then run `cargo run -p ffigen`. CI fails if a generated file is stale.
+#
+# Argument types:
+#   i32 u32 i64 u64 f32 f64   one WASM value each
+#   ptr     a guest address (i32). The handler checks what it points at.
+#   bytes   two i32s, address and length. Checked before the handler runs.
+#
+# Each import is handled by host_<name> in the runtime, written by hand. It returns NULL, or a
+# message that traps the guest.
+
+# the size every guest draws at
+const screen_width   1280
+const screen_height  720
+# a longer log line is cut
+const log_max        200
+
+# level: 0 debug ... 3 error
+fn log      (level: u32, text: bytes)
+# a frame of 0x00RRGGBB pixels, rows top to bottom; width and height must be the screen size
+fn present  (pixels: ptr, width: u32, height: u32)
