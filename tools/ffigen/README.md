@@ -265,16 +265,18 @@ Each gets added with the first import that needs it:
 
 ## How it's built
 
-One file, `src/main.rs`, in three parts:
+Four files in `src/`:
 
-- **The table types.** An argument's type is `Scalar | Ptr | Bytes`. Each output is one small
-  `match` from an argument to its parameters, and a function's parameters come from
-  `flat_map`ping its arguments.
-- **Parsing**, with [winnow](https://docs.rs/winnow) parser combinators, one entry per line,
-  then a pass over the parsed entries for the checks the grammar can't express (duplicates,
-  keywords, sizes).
-- **Output**: one `fn(&Table) -> String` per file, with the C written as
-  [indoc](https://docs.rs/indoc) `formatdoc!` templates.
+- **`table.rs`, the table types.** An argument's type is `Scalar | Ptr | Bytes`. Also the checks
+  the grammar can't express (keywords, reserved names, sizes).
+- **`parse.rs`, parsing**, with [winnow](https://docs.rs/winnow) parser combinators, one entry
+  per line, then a pass over the parsed entries for duplicates and the checks in `table.rs`.
+- **`output.rs`**: one `fn(&Table) -> String` per file, with the C written as
+  [indoc](https://docs.rs/indoc) `formatdoc!` templates. Each output is one small `match` from an
+  argument to its parameters, and a function's parameters come from `flat_map`ping its arguments.
+- **`main.rs`**: which output goes to which path, reading the table and writing the files.
+
+Unit tests sit at the bottom of `parse.rs` and `output.rs`.
 
 It's a workspace member, but not a default one: the guests' `cargo build --target
 wasm32v1-none` builds the default members, and ffigen needs `std`.
