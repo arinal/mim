@@ -4,11 +4,12 @@
 //
 // The engine's budget table and the main loop: one app_tick per frame, on a
 // 60 Hz schedule, until the guest quits, the user presses Ctrl-C or closes
-// the window, or the guest traps. The guest's frames go to a window, unless
-// there's no display or --headless.
+// the window, or the guest traps. What the guest draws on the canvas goes to
+// a window, unless there's no display or --headless.
 //
 //===----------------------------------------------------------------------===//
 
+#include "runtime/canvas/canvas.h"
 #include "runtime/guest/guest.h"
 #include "runtime/loop/loop.h"
 
@@ -98,10 +99,13 @@ int main(int argc, char **argv) {
     size_t size;
     void *const wasm = read_file(&budgets[budget_files], path, &size);
     if (wasm != NULL) {
-        // black until the guest presents a frame
+        // black until the guest draws
         const size_t fb_size = (size_t)guest_screen_width * guest_screen_height * 4;
         uint32_t *const framebuffer = mem_alloc(&budgets[budget_framebuffer], fb_size, "framebuffer");
         memset(framebuffer, 0, fb_size);
+        cv_context_t canvas;
+        cv_init(&canvas, framebuffer, guest_screen_width, guest_screen_height);
+        cv_set_context(&canvas);
 
         pl_display_t storage;
         pl_display_t *display = NULL;
@@ -114,9 +118,10 @@ int main(int argc, char **argv) {
         }
 
         guest_t guest;
-        ok = guest_load(&guest, &budgets[budget_vm], &budgets[budget_linear], framebuffer, wasm, size)
+        ok = guest_load(&guest, &budgets[budget_vm], &budgets[budget_linear], wasm, size)
              && run(&guest, display, framebuffer);
         guest_unload(&guest);
+        cv_set_context(NULL);
         if (display != NULL) {
             pl_display_close(display);
         }

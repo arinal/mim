@@ -3,6 +3,7 @@
 #define _GNU_SOURCE // dup, dup2, fileno
 
 #include "mim_test.h"
+#include "runtime/canvas/canvas.h"
 #include "runtime/guest/guest.h"
 #include "runtime/loop/loop.h"
 
@@ -14,8 +15,9 @@ static mem_budget_t budgets[2];
 static mem_budget_t *const vm = &budgets[0];
 static mem_budget_t *const linear = &budgets[1];
 
-// what mim.present copies into
+// what the guests' mim.cv_* calls draw on
 static uint32_t framebuffer[guest_screen_width * guest_screen_height];
+static cv_context_t canvas;
 
 // Reads build/<preset>/guests/<name>.wasm into a malloc'd buffer
 static void *read_guest(const char *const name, size_t *const out_size) {
@@ -54,7 +56,7 @@ static char *run(
     CHECK(saved >= 0 && dup2(fileno(log), STDERR_FILENO) == STDERR_FILENO);
 
     guest_t guest;
-    *loaded = guest_load(&guest, vm, linear, framebuffer, wasm, size);
+    *loaded = guest_load(&guest, vm, linear, wasm, size);
     for (size_t i = 0; i < count; i++) {
         statuses[i] = guest_tick(&guest, frames[i].abs_time_ms, frames[i].dt_seconds);
     }
@@ -127,7 +129,7 @@ static void test_same_output(void) {
         // quits on the third tick; the fourth doesn't call in (the log has no "tick 4")
         CHECK(statuses[0] == guest_running && statuses[1] == guest_running);
         CHECK(statuses[2] == guest_quit && statuses[3] == guest_quit);
-        // and never calls mim.present
+        // and never draw
         for (size_t p = 0; p < guest_screen_width * guest_screen_height; p++) {
             CHECK(framebuffer[p] == 0);
         }
@@ -159,9 +161,6 @@ static void test_hostile(void) {
     expect("evil_wrong_import", false, "guest: rejected: import 'mim.log': function signature mismatch");
     expect("evil_huge_memory", false, "guest: rejected: memory allocation failed");
     expect("evil_imported_memory", false, "guest: rejected: unallocated linear memory");
-    expect("evil_present_bad_size", false, "guest: trapped in app_init: mim.present: frame must be 1280x720");
-    expect("evil_present_bad_pointer", false, "guest: trapped in app_init: mim.present: frame outside guest memory");
-    expect("evil_present_wrapping", false, "guest: trapped in app_init: mim.present: frame outside guest memory");
 
     // not a module at all, and a real one cut short
     unsigned char noise[256];
@@ -267,6 +266,8 @@ int main(void) {
         {"guest linear", 8 * 1024 * 1024, mem_kind_bump},
     };
     CHECK(mem_init(&mem, defs, budgets, 2) == pl_result_ok);
+    cv_init(&canvas, framebuffer, guest_screen_width, guest_screen_height);
+    cv_set_context(&canvas);
 
     test_same_output();
     test_hostile();

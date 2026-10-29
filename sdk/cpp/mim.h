@@ -74,9 +74,15 @@ inline void log(Level level, const char *msg) {
     (Line() << msg).send(level);
 }
 
-/// Shows a frame: screen_width × screen_height pixels of 0x00RRGGBB, rows top to bottom
-inline void present(const uint32_t *pixels) {
-    mim_present(pixels, screen_width, screen_height);
+/// Sets the colour of the fills that follow: 0xAARRGGBB, alpha 0xFF covers, less blends.
+/// It starts opaque black.
+inline void fill_style(uint32_t color) {
+    mim_cv_fill_style(color);
+}
+
+/// Fills a rectangle on the screen, in pixels from the top left. It shows when app_tick returns.
+inline void fill_rect(float x, float y, float width, float height) {
+    mim_cv_fill_rect(x, y, width, height);
 }
 
 } // namespace mim

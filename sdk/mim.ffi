@@ -19,5 +19,10 @@ const log_max        200
 
 # level: 0 debug ... 3 error
 fn log      (level: u32, text: bytes)
-# a frame of 0x00RRGGBB pixels, rows top to bottom; width and height must be the screen size
-fn present  (pixels: ptr, width: u32, height: u32)
+
+# The canvas: what a guest draws shows when app_tick returns, and stays until it's drawn over.
+# Coordinates are pixels, (0, 0) at the top left; a pixel is filled if its centre is inside.
+
+# colour 0xAARRGGBB for the fills that follow: alpha 0xFF covers, less blends; starts opaque black
+fn cv_fill_style  (color: u32)
+fn cv_fill_rect   (x: f32, y: f32, width: f32, height: f32)

@@ -23,8 +23,7 @@ set(outputs ${MIM_GUEST_DIR}/hello_cpp.wasm)
 # Hostile guests: one per case, from <case>.c and common.c
 set(evil_dir ${CMAKE_CURRENT_SOURCE_DIR}/evil)
 set(evil_cases bad_pointer wrapping_pointer log_edge huge_len bad_level log_injection log_long greedy recursion
-    missing_export wrong_signature wrong_types wrong_import unknown_import huge_memory imported_memory tick_trap
-    present_bad_size present_bad_pointer present_wrapping)
+    missing_export wrong_signature wrong_types wrong_import unknown_import huge_memory imported_memory tick_trap)
 # these replace or drop common.c's exports
 set(evil_missing_export_sources missing_export.c)
 set(evil_wrong_signature_sources wrong_signature.c)

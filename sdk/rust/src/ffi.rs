@@ -9,5 +9,6 @@ pub const LOG_MAX: usize = 200;
 #[link(wasm_import_module = "mim")]
 unsafe extern "C" {
     pub fn log(level: u32, text: *const u8, text_len: u32);
-    pub fn present(pixels: *const core::ffi::c_void, width: u32, height: u32);
+    pub fn cv_fill_style(color: u32);
+    pub fn cv_fill_rect(x: f32, y: f32, width: f32, height: f32);
 }

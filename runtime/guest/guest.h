@@ -37,8 +37,6 @@ typedef struct guest_t {
         mem_budget_t *linear;
         // the guest's linear memory, the only allocation in `linear`
         void *linear_block;
-        // guest_screen_width × guest_screen_height, filled by mim.present
-        uint32_t *framebuffer;
         struct M3Environment *env;
         struct M3Runtime *rt;
         struct M3Function *tick;
@@ -55,10 +53,10 @@ typedef struct guest_t {
 /// * `guest`: Filled in here
 /// * `vm`: An empty heap budget for wasm3 itself
 /// * `linear`: An empty bump budget for the guest's linear memory
-/// * `framebuffer`: guest_screen_width × guest_screen_height pixels that mim.present copies
-///   into; owned by the caller, valid until `guest_unload`
 /// * `wasm`: The module; must stay valid until `guest_unload`
 /// * `size`: Its size in bytes
+///
+/// The guest's mim.cv_* calls draw on the canvas cv_set_context picked, so pick one first.
 ///
 /// Returns false, after logging why, if the module is rejected or `app_init` traps.
 /// Either way, call `guest_unload` afterwards.
@@ -66,7 +64,6 @@ bool guest_load(
     guest_t *const guest,
     mem_budget_t *const vm,
     mem_budget_t *const linear,
-    uint32_t *const framebuffer,
     const void *const wasm,
     const size_t size
 );

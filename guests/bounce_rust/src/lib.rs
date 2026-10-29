@@ -4,15 +4,12 @@
 
 #![no_std]
 
-use mim::{Level, SCREEN_HEIGHT as H, SCREEN_WIDTH as W, Tick, log};
+use mim::{Level, SCREEN_HEIGHT as H, SCREEN_WIDTH as W, Tick, fill_rect, fill_style, log};
 
 const BOX: usize = 64;
 const TOP: usize = (H - BOX) / 2;
-const BLUE: u32 = 0x00_20_20_40;
-const WHITE: u32 = 0x00_FF_FF_FF;
-
-// 3.6 MB, in linear memory from the start
-static mut PIXELS: [u32; W * H] = [0; W * H];
+const BLUE: u32 = 0xFF_20_20_40;
+const WHITE: u32 = 0xFF_FF_FF_FF;
 
 /// The box's left edge: 1 px per 4 ms, from 0 to W - BOX and back
 fn box_x(abs_time_ms: u64) -> usize {
@@ -28,14 +25,11 @@ pub extern "C" fn app_init() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn app_tick(abs_time_ms: u64, _dt_seconds: f32) -> Tick {
-    // the only reference to PIXELS, and the host calls in on one thread
-    let pixels = unsafe { &mut *(&raw mut PIXELS) };
-    pixels.fill(BLUE);
-    let x = box_x(abs_time_ms);
-    for row in pixels[TOP * W..(TOP + BOX) * W].chunks_exact_mut(W) {
-        row[x..x + BOX].fill(WHITE);
-    }
-    mim::present(pixels);
+    // the whole screen every frame: what isn't drawn over stays from the last one
+    fill_style(BLUE);
+    fill_rect(0.0, 0.0, W as f32, H as f32);
+    fill_style(WHITE);
+    fill_rect(box_x(abs_time_ms) as f32, TOP as f32, BOX as f32, BOX as f32);
     Tick::Continue
 }
 

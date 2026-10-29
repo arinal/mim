@@ -21,18 +21,28 @@ static const void *thunk_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t 
     return host_log(&m, level, m.base + text, text_len);
 }
 
-// mim.present(pixels: ptr, width: u32, height: u32)
-static const void *thunk_present(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+// mim.cv_fill_style(color: u32)
+static const void *thunk_cv_fill_style(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
     (void)ctx;
     const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
-    const uint32_t pixels = *(const uint32_t *)&sp[0];
-    const uint32_t width = *(const uint32_t *)&sp[1];
-    const uint32_t height = *(const uint32_t *)&sp[2];
-    return host_present(&m, pixels, width, height);
+    const uint32_t color = *(const uint32_t *)&sp[0];
+    return host_cv_fill_style(&m, color);
+}
+
+// mim.cv_fill_rect(x: f32, y: f32, width: f32, height: f32)
+static const void *thunk_cv_fill_rect(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    const float width = *(const float *)&sp[2];
+    const float height = *(const float *)&sp[3];
+    return host_cv_fill_rect(&m, x, y, width, height);
 }
 
 const guest_import_t guest_imports[] = {
     {"log", "v(iii)", thunk_log},
-    {"present", "v(iii)", thunk_present},
+    {"cv_fill_style", "v(i)", thunk_cv_fill_style},
+    {"cv_fill_rect", "v(ffff)", thunk_cv_fill_rect},
 };
 const size_t guest_import_count = sizeof(guest_imports) / sizeof(guest_imports[0]);

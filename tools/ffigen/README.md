@@ -63,8 +63,10 @@ const log_max        200
 
 # level: 0 debug ... 3 error
 fn log      (level: u32, text: bytes)
-# a frame of 0x00RRGGBB pixels, rows top to bottom; width and height must be the screen size
-fn present  (pixels: ptr, width: u32, height: u32)
+
+# colour 0xAARRGGBB for the fills that follow: alpha 0xFF covers, less blends; starts opaque black
+fn cv_fill_style  (color: u32)
+fn cv_fill_rect   (x: f32, y: f32, width: f32, height: f32)
 ```
 
 - `const <name> <value>`: a constant both sides share. A non-negative integer that fits a C
@@ -83,8 +85,8 @@ Names are `lower_case`.
 
 `bytes` is what makes the table worth having: the bounds check against guest memory is
 generated, so a new handler can't forget it. Use `ptr` only when the size depends on other
-arguments, as with `present`'s `width × height`, and check it in the handler with
-`guest_mem_has`.
+arguments, such as an image's `width × height`, and check it in the handler with
+`guest_mem_has`. No import uses it today.
 
 ### How each type comes out
 
@@ -127,6 +129,9 @@ unsafe extern "C" {
 // sdk/cpp/ffi.h
 __attribute__((import_module("mim"), import_name("log"))) void mim_log(uint32_t level, const void *text, uint32_t text_len);
 ```
+
+A generated declaration with five or more parameters (on the host, `mem` counts) goes one
+parameter per line, as clang-format keeps it. The thunk's call to the handler stays on one line.
 
 Constants come out as `guest_<name>` on the host, `mim_<name>` in C and C++ guests, and
 `<NAME>: usize` in Rust.
@@ -193,7 +198,7 @@ Each gets added with the first import that needs it:
 |---|---|
 | Return values | an import that returns a count, like reading input events |
 | Buffers the host writes into | the same: the host fills a guest buffer |
-| Structs crossing the boundary | the first struct argument, such as a rectangle |
+| Structs crossing the boundary | the first import over 8 values (a rectangle is 4 `f32`s, so `cv_fill_rect` doesn't need one) |
 | Handles for host objects | images and fonts: small integers the host looks up, never addresses |
 
 ## How it's built

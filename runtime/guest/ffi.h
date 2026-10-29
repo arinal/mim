@@ -31,7 +31,14 @@ static inline bool guest_mem_has(const guest_mem_t *const mem, const uint32_t pt
 // Written by hand. Each returns NULL, or a message that traps the guest. `bytes` arguments
 // are already checked and arrive as host pointers; `ptr` arguments are guest addresses.
 const char *host_log(const guest_mem_t *const mem, const uint32_t level, const uint8_t *const text, const uint32_t text_len);
-const char *host_present(const guest_mem_t *const mem, const uint32_t pixels, const uint32_t width, const uint32_t height);
+const char *host_cv_fill_style(const guest_mem_t *const mem, const uint32_t color);
+const char *host_cv_fill_rect(
+    const guest_mem_t *const mem,
+    const float x,
+    const float y,
+    const float width,
+    const float height
+);
 
 struct M3Runtime;
 struct M3ImportContext;

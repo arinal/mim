@@ -74,9 +74,10 @@ There are no fixtures and no test registry: `main` calls the test functions in o
 | `test_mem_heap` | alignment, fill, split, first fit reuses a freed block, coalescing in all three orders, `largest_free` is exact, leak count at shutdown |
 | `test_mem_death` | every misuse aborts with the right message (section 4.2) |
 | `fuzz_mem` | random alloc/free/grow/reset sequences on a heap and a bump budget (section 4.3) |
+| `test_canvas` | on an 8 × 4 canvas between sentinel pixels, drawn maps compared as ASCII: the pixel-centre rule (fractional edges, a rectangle around no centre), two rectangles sharing a fractional edge fill each pixel exactly once, opaque black default, alpha blending per channel and rounding, alpha 0; NaN, ±infinity, ±1e30, `FLT_MAX` and negative sizes never write outside the canvas; drawing goes to the picked context only |
 | `test_loop` | `dt` rules (1 ms for the first frame, for a 0 gap and for a gap over 1 s; exactly 1 s is real), the 60 Hz grid doesn't drift, an overrun re-anchors it |
 | `test_pl_display` | with SDL's `dummy` driver (no display or GPU): open a window, present two frames, a pushed `SDL_EVENT_QUIT` comes out of `pl_tick` as one `pl_event_quit`, close, open again. Not under valgrind (section 5) |
-| `test_guest` | the C++ and Rust guests log identical lines and leave the framebuffer untouched; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box is at the pixel its time puts it, at both ends and on the way back; both budgets are empty after every guest |
+| `test_guest` | the C++ and Rust guests log identical lines and never draw; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box, drawn with `mim.cv_*`, is at the pixel its time puts it, at both ends and on the way back; both budgets are empty after every guest |
 | `test_mim` | the `mim` binary end to end (section 4.5) |
 
 ### 3.1 Hostile guests
@@ -104,11 +105,12 @@ says otherwise. `test_guest` checks whether each one loads and what it logged.
 | `huge_memory` | asks for 64 MiB at start (link flag) | rejected: memory allocation failed |
 | `imported_memory` | imports its memory instead of defining it (link flag) | rejected |
 | `tick_trap` | traps in `app_tick` | dead from then on; `app_shutdown` is not called |
-| `present_bad_size` | presents a 640 × 480 frame | trap: frame must be 1280x720 |
-| `present_bad_pointer` | presents from 100 bytes before the end of memory | trap: frame outside guest memory |
-| `present_wrapping` | presents from `0xFFC7C100`, so `ptr + len` wraps around 32 bits to `0x100`, inside memory | trap: frame outside guest memory |
 
 `test_guest` also feeds 256 bytes of noise and the first half of a real module: both rejected.
+
+The canvas imports (`mim.cv_*`) take only numbers, no pointers, so there's no hostile guest for
+them: `test_canvas` calls the canvas directly with the floats a guest could send (NaN,
+±infinity, huge and negative sizes).
 
 ## 4. Techniques
 
@@ -210,15 +212,16 @@ never opens a window and runs under valgrind too:
 
 ### 6.1 Coverage
 
-gcov, debug build, all 16 tests:
+gcov, debug build, all 18 tests:
 
 | File | Lines | Branches taken |
 |---|---|---|
-| `platform/linux/pl_linux.c` | 97.5% | 68.9% |
+| `platform/linux/pl_linux.c` | 97.6% | 71.3% |
 | `runtime/mem/mem.c` | 91.7% (see 5: death tests not counted) | 75.0% |
-| `runtime/guest/guest.c` | 95.5% | 76.4% |
+| `runtime/guest/guest.c` | 95.6% | 76.9% |
+| `runtime/canvas/canvas.c` | 100% | 88.9% |
 | `runtime/loop/loop.c` | 100% | 83.3% |
-| `runtime/main.c` | 75.6% | 71.4% |
+| `runtime/main.c` | 74.6% | 61.9% |
 
 To reproduce:
 
@@ -230,7 +233,8 @@ cd /tmp/mim-cov && gcov -b -o runtime/mem/CMakeFiles/mim_mem.dir runtime/mem/CMa
 ```
 
 The lines never run are almost all environment failures (`pthread_create` failing, `EINTR`,
-`vsnprintf` failing, the region failing to map) and `main`'s usage and file errors.
+`vsnprintf` failing, the region failing to map) and `main`'s usage and file errors. `main`'s
+window branches never run either: every test runs it `--headless`.
 
 ### 6.2 Mutation testing
 
@@ -261,6 +265,10 @@ Still surviving:
 | bump `peak` not updated by `mem_try_grow` | no test checks `peak` after a grow; one check in `test_mem_bump` would kill it |
 | `SA_RESETHAND` dropped (a second Ctrl-C no longer kills a stuck guest) | needs a guest stuck inside a frame |
 | leaks don't change `mim`'s exit code | needs a guest that makes wasm3 leak |
+
+The canvas, measured on its own with `test_canvas` and `test_guest`: 7 of 7 killed. The mutants
+were: the pixel-centre offset dropped, NaN not caught, no clamp to the canvas, no rounding in the
+blend, no blending, the top byte written, and a transparent default fill.
 
 ## 7. Adding a test
 

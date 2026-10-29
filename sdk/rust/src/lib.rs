@@ -37,18 +37,15 @@ pub fn log(level: Level, msg: &str) {
     unsafe { ffi::log(level as u32, msg.as_ptr(), msg.len() as u32) }
 }
 
-/// Shows a frame: SCREEN_WIDTH × SCREEN_HEIGHT pixels of 0x00RRGGBB, rows top to bottom
-///
-/// Panics if `pixels` is any other length.
-pub fn present(pixels: &[u32]) {
-    assert_eq!(pixels.len(), SCREEN_WIDTH * SCREEN_HEIGHT);
-    unsafe {
-        ffi::present(
-            pixels.as_ptr().cast(),
-            SCREEN_WIDTH as u32,
-            SCREEN_HEIGHT as u32,
-        )
-    }
+/// Sets the colour of the fills that follow: 0xAARRGGBB, alpha 0xFF covers, less blends.
+/// It starts opaque black.
+pub fn fill_style(color: u32) {
+    unsafe { ffi::cv_fill_style(color) }
+}
+
+/// Fills a rectangle on the screen, in pixels from the top left. It shows when app_tick returns.
+pub fn fill_rect(x: f32, y: f32, width: f32, height: f32) {
+    unsafe { ffi::cv_fill_rect(x, y, width, height) }
 }
 
 /// A line being formatted on the stack; text past its capacity is dropped

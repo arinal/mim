@@ -396,8 +396,9 @@ fn header() -> String {
     format!("// {SPDX}\n// {NOTE}\n\n")
 }
 
-// "name(a, b)" on one line, or one per line once there are five or more, as clang-format keeps them
-fn c_call(name: &str, params: &[String], end: &str) -> String {
+// A declaration: "name(a, b)" on one line, or one per line once there are five or more, as
+// clang-format keeps them
+fn c_decl(name: &str, params: &[String], end: &str) -> String {
     if params.len() < 5 {
         format!("{name}({}){end}", params.join(", "))
     } else {
@@ -426,7 +427,7 @@ fn host_h(t: &Table) -> String {
         let params: Vec<String> = std::iter::once("const guest_mem_t *const mem".to_owned())
             .chain(f.args.iter().flat_map(Arg::host_params))
             .collect();
-        c_call(&format!("const char *host_{}", f.name), &params, ";\n")
+        c_decl(&format!("const char *host_{}", f.name), &params, ";\n")
     });
     header()
         + &formatdoc! {"
@@ -509,7 +510,8 @@ fn thunk(f: &Func) -> String {
     let call: Vec<String> = std::iter::once("&m".to_owned())
         .chain(f.args.iter().flat_map(Arg::host_call))
         .collect();
-    let call = c_call(&format!("    return host_{name}"), &call, ";\n");
+    // a call stays on one line however many arguments it has
+    let call = format!("    return host_{name}({});\n", call.join(", "));
     formatdoc! {"
 
         // mim.{name}({args})
@@ -574,7 +576,7 @@ fn guest_c(t: &Table) -> String {
             "__attribute__((import_module(\"mim\"), import_name(\"{}\")))",
             f.name
         );
-        c_call(&format!("{attr} void mim_{}", f.name), &params, ";\n")
+        c_decl(&format!("{attr} void mim_{}", f.name), &params, ";\n")
     });
     header()
         + &formatdoc! {"

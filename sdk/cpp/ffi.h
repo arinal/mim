@@ -18,7 +18,8 @@ enum {
 };
 
 __attribute__((import_module("mim"), import_name("log"))) void mim_log(uint32_t level, const void *text, uint32_t text_len);
-__attribute__((import_module("mim"), import_name("present"))) void mim_present(const void *pixels, uint32_t width, uint32_t height);
+__attribute__((import_module("mim"), import_name("cv_fill_style"))) void mim_cv_fill_style(uint32_t color);
+__attribute__((import_module("mim"), import_name("cv_fill_rect"))) void mim_cv_fill_rect(float x, float y, float width, float height);
 
 #ifdef __cplusplus
 }

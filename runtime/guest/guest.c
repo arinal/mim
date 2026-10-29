@@ -11,6 +11,7 @@
 
 #include "runtime/guest/guest.h"
 
+#include "runtime/canvas/canvas.h"
 #include "wasm3.h"
 
 #include <stdarg.h>
@@ -56,16 +57,24 @@ const char *host_log(const guest_mem_t *const mem, const uint32_t level, const u
     return NULL;
 }
 
-const char *host_present(const guest_mem_t *const mem, const uint32_t pixels, const uint32_t width, const uint32_t height) {
-    if (width != guest_screen_width || height != guest_screen_height) {
-        return "mim.present: frame must be 1280x720";
-    }
-    const size_t len = (size_t)guest_screen_width * guest_screen_height * 4;
-    if (!guest_mem_has(mem, pixels, len)) {
-        return "mim.present: frame outside guest memory";
-    }
-    // pixels needn't be aligned: memcpy doesn't care. The top byte of each pixel is ignored later.
-    memcpy(g_guest->internal.framebuffer, mem->base + pixels, len);
+// The canvas draws on whatever cv_set_context picked; a guest can't reach any other memory
+// through it
+
+const char *host_cv_fill_style(const guest_mem_t *const mem, const uint32_t color) {
+    (void)mem;
+    cv_fill_style(color);
+    return NULL;
+}
+
+const char *host_cv_fill_rect(
+    const guest_mem_t *const mem,
+    const float x,
+    const float y,
+    const float width,
+    const float height
+) {
+    (void)mem;
+    cv_fill_rect(x, y, width, height);
     return NULL;
 }
 
@@ -171,7 +180,6 @@ bool guest_load(
     guest_t *const guest,
     mem_budget_t *const vm,
     mem_budget_t *const linear,
-    uint32_t *const framebuffer,
     const void *const wasm,
     const size_t size
 ) {
@@ -180,7 +188,6 @@ bool guest_load(
     memset(guest, 0, sizeof(*guest));
     guest->internal.vm = vm;
     guest->internal.linear = linear;
-    guest->internal.framebuffer = framebuffer;
     g_guest = guest;
 
     if (!load_module(guest, wasm, size)) {
