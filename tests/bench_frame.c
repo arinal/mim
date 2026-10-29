@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     uint64_t worst = 0;
     for (int i = 0; i < frames; i++) {
         const uint64_t start = pl_time_now_ns();
-        CHECK(guest_tick(&guest, (uint64_t)i * 16, 0.016f) == guest_running);
+        CHECK(guest_tick(&guest, (uint64_t)i * 16, 0.016f, NULL, 0) == guest_running);
         const uint64_t ns = pl_time_now_ns() - start;
         if (i == 0) {
             first = ns;

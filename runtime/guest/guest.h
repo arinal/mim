@@ -45,6 +45,10 @@ typedef struct guest_t {
         bool alive;
         // true once app_tick has returned 0
         bool quit;
+        // the frame's events while app_tick runs, and how many mim.read_events has handed out
+        const pl_event_t *events;
+        size_t event_count;
+        size_t events_read;
     } internal;
 } guest_t;
 
@@ -79,7 +83,16 @@ typedef enum guest_status_e {
 } guest_status_e;
 
 /// Calls `app_tick`, unless the guest has already quit or died
-guest_status_e guest_tick(guest_t *const guest, const uint64_t abs_time_ms, const float dt_seconds);
+///
+/// * `events`: The frame's events, from pl_tick; the guest's mim.read_events gets the keys
+/// * `event_count`: How many
+guest_status_e guest_tick(
+    guest_t *const guest,
+    const uint64_t abs_time_ms,
+    const float dt_seconds,
+    const pl_event_t *const events,
+    const size_t event_count
+);
 
 /// Calls `app_shutdown` if the guest is still alive, then frees everything it used
 ///

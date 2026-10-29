@@ -4,11 +4,21 @@
 pub const SCREEN_WIDTH: usize = 1280;
 pub const SCREEN_HEIGHT: usize = 720;
 pub const LOG_MAX: usize = 200;
+pub const EVENT_SIZE: usize = 8;
+pub const EVENT_PRESS: usize = 1;
+pub const EVENT_RELEASE: usize = 2;
+pub const KEY_LEFT: usize = 1;
+pub const KEY_RIGHT: usize = 2;
+pub const KEY_UP: usize = 3;
+pub const KEY_DOWN: usize = 4;
+pub const KEY_OK: usize = 5;
+pub const KEY_BACK: usize = 6;
 
 // wasm32v1-none links without --allow-undefined: imports must name their module
 #[link(wasm_import_module = "mim")]
 unsafe extern "C" {
     pub fn log(level: u32, text: *const u8, text_len: u32);
+    pub fn read_events(events: *mut core::ffi::c_void, cap: u32) -> u32;
     pub fn cv_save();
     pub fn cv_restore();
     pub fn cv_translate(x: f32, y: f32);

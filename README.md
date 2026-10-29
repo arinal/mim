@@ -18,7 +18,7 @@ layer that should one day boot on bare metal.
 %%{init: {"flowchart": {"wrappingWidth": 400, "subGraphTitleMargin": {"top": 10, "bottom": 10}}}}%%
 flowchart TB
     accTitle: How MIM fits together
-    accDescr: Everything except the guest apps is one executable, mim; on Linux it loads libc and libSDL3 as shared libraries. Five untrusted WASM guest apps (hello_rust, hello_cpp, bounce_rust, and canvas_rust and canvas_cpp), loaded one at a time, run inside the wasm3 interpreter. Their imports reach the runtime's guest loader, which checks every pointer and passes drawing calls to the canvas, which draws into the framebuffer, using stb for PNGs and glyphs. The runtime reaches the OS only through platform/pl.h. Linux implements it today; bare metal in QEMU is planned for stage 9, and Windows is not planned.
+    accDescr: Everything except the guest apps is one executable, mim; on Linux it loads libc and libSDL3 as shared libraries. Seven untrusted WASM guest apps (hello_rust, hello_cpp, bounce_rust, canvas_rust and canvas_cpp, and ui_rust and ui_cpp), loaded one at a time, run inside the wasm3 interpreter. Their imports reach the runtime's guest loader, which checks every pointer and passes drawing calls to the canvas, which draws into the framebuffer, using stb for PNGs and glyphs. The runtime reaches the OS only through platform/pl.h. Linux implements it today; bare metal in QEMU is planned for stage 9, and Windows is not planned.
 
     subgraph apps["<b>guest apps (.wasm)</b>: untrusted, one at a time"]
         subgraph list[" "]
@@ -27,9 +27,10 @@ flowchart TB
             hello_cpp["<b>hello_cpp</b><br/>the same lines, from C++"]
             bounce_rust["<b>bounce_rust</b><br/>a box bouncing in a window"]
             demo["<b>canvas_rust · canvas_cpp</b><br/>a TV home screen,<br/>the same frame from each"]
-            hello_rust ~~~ hello_cpp ~~~ bounce_rust ~~~ demo
+            ui["<b>ui_rust · ui_cpp</b><br/>a TV app to move<br/>through with the keys"]
+            hello_rust ~~~ hello_cpp ~~~ bounce_rust ~~~ demo ~~~ ui
         end
-        abi["<b>exports:</b> app_init · app_tick · app_shutdown<br/><b>imports:</b> mim.log · mim.cv_*, listed in sdk/mim.ffi"]
+        abi["<b>exports:</b> app_init · app_tick · app_shutdown<br/><b>imports:</b> mim.log · mim.read_events · mim.cv_*, listed in sdk/mim.ffi"]
         list --- abi
     end
 
@@ -141,7 +142,7 @@ flowchart LR
     S7["7 · debugging toolkit<br/>(all along)"]
 
     classDef done fill:#2da44e,stroke:#1a7f37,color:#fff
-    class S0,S1,S2,S3,S4a,S4b0,S4b done
+    class S0,S1,S2,S3,S4a,S4b0,S4b,S4c done
 ```
 
 | | Stage | What it is | Done when |
@@ -153,7 +154,7 @@ flowchart LR
 | ✅ | **4a · Main loop + window** | **A 60 Hz loop with a real `dt`, Ctrl-C and window close quit cleanly, the guest pushes 1280×720 frames into an SDL3 window (or runs headless), through `mim.present`, which the canvas replaced in 4b.** | **A fake-clock test checks every `dt` and frame, and bad `mim.present` calls trap.** |
 | ✅ | **4b.0 · FFI** | **One table, `sdk/mim.ffi`, lists every import and shared constant. A small generator writes the host's linking code and both SDKs' declarations from it, and checks guest buffers before the handler runs.** | **Editing the table without regenerating fails CI, and a handler with the wrong argument types doesn't compile.** |
 | ✅ | **4b · Canvas** | **A 2D drawing API shaped like HTML5 Canvas, done in software: paths, fills and strokes with anti-aliasing, transforms, clipping, PNG images, text from a glyph atlas. A Rust and a C++ app draw the same TV home screen with it.** | **Golden-image tests for each primitive and for the whole home screen, which both apps draw pixel for pixel the same. A frame of it takes 11 ms in a debug build, 6 ms optimised.** |
-| ⬜ | 4c · App UI | A TV-style UI inside the guest: one state, actions, immediate-mode screens, D-pad focus, scrolling tile rows. Built in Rust and in C++. | A scripted "down, down, OK" replay matches a golden image. |
+| ✅ | **4c · App UI** | **A TV-style app inside the guest: one state, actions, immediate-mode screens laid out at 1920×1080 and scaled once, rows of tiles that scroll only near their edges, up and down landing under the same spot, a focus that grows on a spring, and key repeat timed by the app. The guest pulls this frame's keys with `mim.read_events`. Built in Rust and in C++.** | **A scripted "right ×5, down, down, OK, back" replay: both apps draw the same frames, which match golden images, and back returns to exactly the screen it left.** |
 | ⬜ | 4d · GPU backend | A tiny `gpu_*` interface with an OpenGL ES backend. The software canvas stays as the reference. | Both renderers draw the same scene within a tolerance. |
 | ⬜ | 5 · Input | Keyboard and gamepad events, plus an input thread feeding a lock-free ring buffer. | A multi-threaded stress test passes under TSan, plus an input replay test. |
 | ⬜ | 6 · Networking | Non-blocking sockets, `poll()`, a hand-written HTTP/1.1 client, async callbacks to the guest. | Tests against a local server, and the response parser gets fuzzed. |
@@ -172,6 +173,7 @@ rustup target add wasm32v1-none
 cmake --preset debug
 cmake --build build/debug
 
+./build/debug/mim build/debug/guests/ui_rust.wasm                # arrows, Enter, Esc (or ui_cpp)
 ./build/debug/mim build/debug/guests/canvas_rust.wasm            # a TV home screen (or canvas_cpp)
 ./build/debug/mim build/debug/guests/bounce_rust.wasm            # a box bouncing in a window
 ./build/debug/mim --headless build/debug/guests/hello_rust.wasm  # logs a few lines and quits

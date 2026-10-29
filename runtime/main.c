@@ -67,15 +67,15 @@ static bool has_quit(const pl_event_t *const events, const size_t count) {
 // Shows each frame on `display`, unless it's NULL.
 static bool run(guest_t *const guest, pl_display_t *const display, const uint32_t *const framebuffer) {
     loop_t loop = {0};
-    pl_event_t events[8];
+    pl_event_t events[64];
     guest_status_e status = guest_running;
     while (status == guest_running) {
-        const size_t count = pl_tick(events, 8);
+        const size_t count = pl_tick(events, 64);
         if (has_quit(events, count)) {
             break;
         }
         const loop_frame_t frame = loop_begin(&loop, events[count - 1].time_ns);
-        status = guest_tick(guest, frame.abs_time_ms, frame.dt_seconds);
+        status = guest_tick(guest, frame.abs_time_ms, frame.dt_seconds, events, count);
         if (display != NULL) {
             pl_display_present(display, framebuffer);
         }

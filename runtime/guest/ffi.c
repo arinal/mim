@@ -23,6 +23,20 @@ static const void *thunk_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t 
     return host_log(&m, level, m.base + text, text_len);
 }
 
+// mim.read_events(events: ptr, cap: u32) -> u32
+static const void *thunk_read_events(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const uint32_t events = *(const uint32_t *)&sp[1];
+    const uint32_t cap = *(const uint32_t *)&sp[2];
+    uint32_t result = 0;
+    const char *const err = host_read_events(&m, events, cap, &result);
+    if (err == NULL) {
+        *(uint32_t *)&sp[0] = result;
+    }
+    return err;
+}
+
 // mim.cv_save()
 static const void *thunk_cv_save(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
     (void)ctx;
@@ -267,6 +281,7 @@ static const void *thunk_cv_measure_text(IM3Runtime runtime, IM3ImportContext ct
 
 const guest_import_t guest_imports[] = {
     {"log", "v(iii)", thunk_log},
+    {"read_events", "i(ii)", thunk_read_events},
     {"cv_save", "v()", thunk_cv_save},
     {"cv_restore", "v()", thunk_cv_restore},
     {"cv_translate", "v(ff)", thunk_cv_translate},

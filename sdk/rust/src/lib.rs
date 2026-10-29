@@ -13,6 +13,7 @@ static ALLOC: dlmalloc::GlobalDlmalloc = dlmalloc::GlobalDlmalloc;
 mod ffi;
 
 pub mod cv;
+pub mod input;
 
 /// The size every app draws at
 pub use ffi::{SCREEN_HEIGHT, SCREEN_WIDTH};

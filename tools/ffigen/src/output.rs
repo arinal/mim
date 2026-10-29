@@ -39,7 +39,8 @@ impl Arg {
     fn guest_c_params(&self) -> Vec<String> {
         match self.ty {
             Ty::Scalar(s) => vec![format!("{} {}", s.c(), self.name)],
-            Ty::Ptr => vec![format!("const void *{}", self.name)],
+            // the handler may write through it
+            Ty::Ptr => vec![format!("void *{}", self.name)],
             Ty::Bytes => vec![
                 format!("const void *{}", self.name),
                 format!("uint32_t {}_len", self.name),
@@ -51,7 +52,7 @@ impl Arg {
     fn rust_params(&self) -> Vec<String> {
         match self.ty {
             Ty::Scalar(s) => vec![format!("{}: {}", self.name, s.rust())],
-            Ty::Ptr => vec![format!("{}: *const core::ffi::c_void", self.name)],
+            Ty::Ptr => vec![format!("{}: *mut core::ffi::c_void", self.name)],
             Ty::Bytes => vec![
                 format!("{}: *const u8", self.name),
                 format!("{}_len: u32", self.name),

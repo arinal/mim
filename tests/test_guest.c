@@ -37,16 +37,28 @@ static void *read_guest(const char *const name, size_t *const out_size) {
 static const loop_frame_t four_frames[] = {{16, 0.016f}, {32, 0.016f}, {48, 0.016f}, {64, 0.016f}};
 
 // What guest_tick returned for each frame of the last run
-static guest_status_e statuses[8];
+static guest_status_e statuses[64];
 
-// Loads `wasm`, ticks it once per frame, unloads it, and returns the "app:" and "guest:" lines
-// it logged, without timestamps. Checks both budgets are empty afterwards.
+// A scripted key: in frame `frame`, `key` goes down or up
+typedef struct key_at_t {
+    size_t frame;
+    pl_key_e key;
+    bool down;
+} key_at_t;
+
+// If set, run() calls it after each frame
+static void (*after_frame)(size_t frame);
+
+// Loads `wasm`, ticks it once per frame with the `keys` due in it, unloads it, and returns the
+// "app:" and "guest:" lines it logged, without timestamps. Checks both budgets are empty afterwards.
 static char *run(
     const void *const wasm,
     const size_t size,
     bool *const loaded,
     const loop_frame_t *const frames,
-    const size_t count
+    const size_t count,
+    const key_at_t *const keys,
+    const size_t key_count
 ) {
     CHECK(count <= sizeof(statuses) / sizeof(statuses[0]));
     // stderr goes to a file while the guest runs; it stays behind, so a sanitizer report
@@ -63,7 +75,20 @@ static char *run(
     guest_t guest;
     *loaded = guest_load(&guest, vm, linear, wasm, size);
     for (size_t i = 0; i < count; i++) {
-        statuses[i] = guest_tick(&guest, frames[i].abs_time_ms, frames[i].dt_seconds);
+        // the frame's keys, then its time, as pl_tick hands them over
+        pl_event_t events[8];
+        size_t n = 0;
+        for (size_t k = 0; k < key_count; k++) {
+            if (keys[k].frame == i) {
+                CHECK(n < 7);
+                events[n++] = (pl_event_t){pl_event_key, 0, keys[k].key, keys[k].down};
+            }
+        }
+        events[n++] = (pl_event_t){.type = pl_event_time};
+        statuses[i] = guest_tick(&guest, frames[i].abs_time_ms, frames[i].dt_seconds, events, n);
+        if (after_frame != NULL) {
+            after_frame(i);
+        }
     }
     guest_unload(&guest);
     cv_shutdown(&canvas);
@@ -102,7 +127,7 @@ static void expect(const char *const name, const bool should_load, const char *c
     size_t size;
     void *const wasm = read_guest(name, &size);
     bool loaded;
-    char *const out = run(wasm, size, &loaded, four_frames, 4);
+    char *const out = run(wasm, size, &loaded, four_frames, 4, NULL, 0);
     if (loaded != should_load || (strstr)(out, expected) == NULL) {
         fprintf(stderr, "%s: expected %s and \"%s\" in:\n%s\n", name, should_load ? "loaded" : "rejected", expected, out);
         CHECK(false);
@@ -128,7 +153,7 @@ static void test_same_output(void) {
         size_t size;
         void *const wasm = read_guest(names[i], &size);
         bool loaded;
-        char *const out = run(wasm, size, &loaded, four_frames, 4);
+        char *const out = run(wasm, size, &loaded, four_frames, 4, NULL, 0);
         if (!loaded || strcmp(out, hello_log) != 0) {
             fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, hello_log);
             CHECK(false);
@@ -173,6 +198,8 @@ static void test_hostile(void) {
     expect("evil_cv_bad_image", false, "guest: trapped in app_init: mim.cv_draw_image: no such image");
     expect("evil_cv_negative_arc", false, "guest: trapped in app_init: mim.cv_arc: negative radius");
     expect("evil_cv_bad_png", false, "app: refused\nguest: trapped in app_init: mim.cv_image_load: png outside guest memory");
+    expect("evil_read_events_edge", false, "app: edge\nguest: trapped in app_init: mim.read_events: events outside guest memory");
+    expect("evil_read_events_huge_cap", false, "guest: trapped in app_init: mim.read_events: events outside guest memory");
 
     // not a module at all, and a real one cut short
     unsigned char noise[256];
@@ -180,13 +207,13 @@ static void test_hostile(void) {
         noise[i] = (unsigned char)(i * 131 + 7);
     }
     bool loaded;
-    char *out = run(noise, sizeof(noise), &loaded, four_frames, 4);
+    char *out = run(noise, sizeof(noise), &loaded, four_frames, 4, NULL, 0);
     CHECK(!loaded && (strstr)(out, "guest: rejected: ") != NULL);
     free(out);
 
     size_t size;
     void *const wasm = read_guest("hello_rust", &size);
-    out = run(wasm, size / 2, &loaded, four_frames, 4);
+    out = run(wasm, size / 2, &loaded, four_frames, 4, NULL, 0);
     CHECK(!loaded && (strstr)(out, "guest: rejected: ") != NULL);
     free(out);
     free(wasm);
@@ -214,7 +241,7 @@ static void test_fake_clock(void) {
         size_t size;
         void *const wasm = read_guest(names[i], &size);
         bool loaded;
-        char *const out = run(wasm, size, &loaded, frames, 3);
+        char *const out = run(wasm, size, &loaded, frames, 3, NULL, 0);
         if (!loaded || strcmp(out, expected) != 0) {
             fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, expected);
             CHECK(false);
@@ -249,7 +276,7 @@ static void test_bounce(void) {
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
         const loop_frame_t frame = {cases[i].abs_time_ms, 0.016f};
         bool loaded;
-        free(run(wasm, size, &loaded, &frame, 1));
+        free(run(wasm, size, &loaded, &frame, 1, NULL, 0));
         CHECK(loaded && statuses[0] == guest_running);
         const size_t x = cases[i].x;
         // the four corners inside, and the pixels just outside each edge
@@ -274,7 +301,7 @@ static void test_canvas_demo(void) {
         size_t size;
         void *const wasm = read_guest(names[i], &size);
         bool loaded;
-        char *const out = run(wasm, size, &loaded, &frame, 1);
+        char *const out = run(wasm, size, &loaded, &frame, 1, NULL, 0);
         if (!loaded || statuses[0] != guest_running) {
             fprintf(stderr, "%s logged:\n%s\n", names[i], out);
             CHECK(false);
@@ -290,6 +317,141 @@ static void test_canvas_demo(void) {
         }
     }
     CHECK(golden_check("canvas_demo", framebuffer, guest_screen_width, guest_screen_height));
+    memset(framebuffer, 0, sizeof(framebuffer));
+}
+
+// The UI guests' frames worth keeping, and which frames they are
+static uint32_t ui_home[guest_screen_width * guest_screen_height];
+static uint32_t ui_details[guest_screen_width * guest_screen_height];
+static uint32_t ui_back[guest_screen_width * guest_screen_height];
+enum {
+    ui_home_frame = 33,
+    ui_details_frame = 37,
+    ui_back_frame = 41,
+};
+
+static void keep_ui_frames(const size_t frame) {
+    if (frame == ui_home_frame) {
+        memcpy(ui_home, framebuffer, sizeof(framebuffer));
+    } else if (frame == ui_details_frame) {
+        memcpy(ui_details, framebuffer, sizeof(framebuffer));
+    } else if (frame == ui_back_frame) {
+        memcpy(ui_back, framebuffer, sizeof(framebuffer));
+    }
+}
+
+// Frames 50 ms apart with dt pinned, like a story test: anything animated depends on the frame count only
+static loop_frame_t ui_frames[42];
+
+static void make_ui_frames(void) {
+    for (size_t i = 0; i < sizeof(ui_frames) / sizeof(ui_frames[0]); i++) {
+        ui_frames[i] = (loop_frame_t){(uint64_t)i * 50, 0.05f};
+    }
+}
+
+// The roadmap's 4c test, a scripted replay: right five times, then down, down, OK, and back.
+// Both UI guests draw the same frames, the home screen and the details page match their golden
+// images, and Back returns to exactly the home screen it left, focus and scroll included.
+static void test_ui_replay(void) {
+    static const key_at_t script[] = {
+        {1, pl_key_right, true},
+        {2, pl_key_right, false},
+        {3, pl_key_right, true},
+        {4, pl_key_right, false},
+        {5, pl_key_right, true},
+        {6, pl_key_right, false},
+        {7, pl_key_right, true},
+        {8, pl_key_right, false},
+        {9, pl_key_right, true},
+        {10, pl_key_right, false},
+        // row 0 has scrolled, row 1 hasn't: the tile under the same spot is the fifth, not the sixth
+        {11, pl_key_down, true},
+        {12, pl_key_down, false},
+        {13, pl_key_down, true},
+        {14, pl_key_down, false},
+        {34, pl_key_ok, true},
+        {35, pl_key_ok, false},
+        {38, pl_key_back, true},
+        {39, pl_key_back, false},
+    };
+    static const char expected[] =
+        "app: ui: focus 0,1\n"
+        "app: ui: focus 0,2\n"
+        "app: ui: focus 0,3\n"
+        "app: ui: focus 0,4\n"
+        "app: ui: focus 0,5\n"
+        "app: ui: focus 1,4\n"
+        "app: ui: focus 2,4\n"
+        "app: ui: details 2,4\n"
+        "app: ui: home\n";
+    static uint32_t rust_home[guest_screen_width * guest_screen_height];
+    static uint32_t rust_details[guest_screen_width * guest_screen_height];
+    const size_t frames = sizeof(ui_frames) / sizeof(ui_frames[0]);
+    make_ui_frames();
+    const char *const names[] = {"ui_rust", "ui_cpp"};
+    for (size_t i = 0; i < 2; i++) {
+        size_t size;
+        void *const wasm = read_guest(names[i], &size);
+        bool loaded;
+        after_frame = keep_ui_frames;
+        char *const out = run(wasm, size, &loaded, ui_frames, frames, script, sizeof(script) / sizeof(script[0]));
+        after_frame = NULL;
+        if (!loaded || statuses[frames - 1] != guest_running || strcmp(out, expected) != 0) {
+            fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, expected);
+            CHECK(false);
+        }
+        free(out);
+        free(wasm);
+        CHECK(memcmp(ui_back, ui_home, sizeof(ui_home)) == 0);
+        if (i == 0) {
+            memcpy(rust_home, ui_home, sizeof(ui_home));
+            memcpy(rust_details, ui_details, sizeof(ui_details));
+        } else if (memcmp(rust_home, ui_home, sizeof(ui_home)) != 0 || memcmp(rust_details, ui_details, sizeof(ui_details)) != 0) {
+            fprintf(stderr, "ui_cpp's frames differ from ui_rust's\n");
+            CHECK(golden_check("ui_home_cpp", ui_home, guest_screen_width, guest_screen_height));
+            CHECK(golden_check("ui_details_cpp", ui_details, guest_screen_width, guest_screen_height));
+            CHECK(false);
+        }
+    }
+    CHECK(golden_check("ui_home", ui_home, guest_screen_width, guest_screen_height));
+    CHECK(golden_check("ui_details", ui_details, guest_screen_width, guest_screen_height));
+    memset(framebuffer, 0, sizeof(framebuffer));
+}
+
+// Holding a direction moves once, then again after 0.30 s and every 0.15 s, until it's let go;
+// Back from the top row quits
+static void test_ui_repeat(void) {
+    // right held from frame 1 until frame 21: held for 0.05 s more each frame from frame 2
+    static const key_at_t script[] = {
+        {1, pl_key_right, true},
+        {21, pl_key_right, false},
+        {30, pl_key_back, true},
+    };
+    // the press, then repeats at 0.30, 0.45, 0.60, 0.75 and 0.90 s; at 1.0 s the release comes
+    // after the time is counted, which is one frame's grace: 1.05 is past it
+    static const char expected[] =
+        "app: ui: focus 0,1\n"
+        "app: ui: focus 0,2\n"
+        "app: ui: focus 0,3\n"
+        "app: ui: focus 0,4\n"
+        "app: ui: focus 0,5\n"
+        "app: ui: focus 0,6\n"
+        "app: ui: bye\n";
+    make_ui_frames();
+    const char *const names[] = {"ui_rust", "ui_cpp"};
+    for (size_t i = 0; i < 2; i++) {
+        size_t size;
+        void *const wasm = read_guest(names[i], &size);
+        bool loaded;
+        char *const out = run(wasm, size, &loaded, ui_frames, 32, script, sizeof(script) / sizeof(script[0]));
+        if (!loaded || strcmp(out, expected) != 0) {
+            fprintf(stderr, "%s logged:\n%s\nexpected:\n%s\n", names[i], out, expected);
+            CHECK(false);
+        }
+        CHECK(statuses[29] == guest_running && statuses[30] == guest_quit);
+        free(out);
+        free(wasm);
+    }
     memset(framebuffer, 0, sizeof(framebuffer));
 }
 
@@ -315,6 +477,8 @@ int main(void) {
     test_tick_trap();
     test_bounce();
     test_canvas_demo();
+    test_ui_replay();
+    test_ui_repeat();
     test_greedy_twice();
     // and a normal guest still runs after all of that
     test_same_output();

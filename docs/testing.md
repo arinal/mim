@@ -81,8 +81,8 @@ There are no fixtures and no test registry: `main` calls the test functions in o
 | `test_canvas` | the canvas's rules, on an 8 × 4 canvas between sentinel pixels, as ASCII maps: coverage is the share of each pixel inside (fractional edges, a rectangle smaller than a pixel, negative sizes); one fill adds up its shapes (no seam where two meet, an overlap counts once, a shape the other way round cuts a hole); colour and alpha rounding; transform, save/restore, a clip narrowing a clip, 32 saves and not 33; paths (a line after `close_path`, an edge entering across the left side, strokes, arcs, the path's limits); images (1:1 and stretched, premultiplied alpha, handles that aren't images, PNGs that aren't, a PNG with an empty first `IDAT`, too wide, the 65th); text (measuring, kerning, the baseline, every kind of bad UTF-8, the atlas starting over); and every call with NaN, ±infinity, ±`FLT_MAX` and other floats in every argument |
 | `test_golden` | one scene per primitive, 320 × 180, against `tests/golden/*.png` (section 4.6): fills, arcs, rounded rectangles, strokes (widths, joins, a bevel), state (transforms, mirroring, clips), images (scaled, faded, mirrored, clipped), text (sizes, kerning, centred by its measured width, non-ASCII, scaled, clipped) |
 | `test_loop` | `dt` rules (1 ms for the first frame, for a 0 gap and for a gap over 1 s; exactly 1 s is real), the 60 Hz grid doesn't drift, an overrun re-anchors it |
-| `test_pl_display` | with SDL's `dummy` driver (no display or GPU): open a window, present two frames, a pushed `SDL_EVENT_QUIT` comes out of `pl_tick` as one `pl_event_quit`, close, open again. Not under valgrind (section 5) |
-| `test_guest` | the C++ and Rust guests log identical lines and never draw; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box, drawn with `mim.cv_*`, is at the pixel its time puts it, at both ends and on the way back; `canvas_rust` and `canvas_cpp` draw the same 1280 × 720 frame, pixel for pixel, and it matches `tests/golden/canvas_demo.png`; every guest gets a fresh canvas, and all three budgets are empty after it |
+| `test_pl_display` | with SDL's `dummy` driver (no display or GPU): open a window, present two frames, a pushed `SDL_EVENT_QUIT` comes out of `pl_tick` as one `pl_event_quit`, close, open again; pushed key events come out as `pl_event_key` in order, without the OS's repeats or keys a remote doesn't have, and keys beyond the buffer are dropped while the quit and the time still fit. Not under valgrind (section 5) |
+| `test_guest` | the C++ and Rust guests log identical lines and never draw; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box, drawn with `mim.cv_*`, is at the pixel its time puts it, at both ends and on the way back; `canvas_rust` and `canvas_cpp` draw the same 1280 × 720 frame, pixel for pixel, and it matches `tests/golden/canvas_demo.png`; a scripted key replay through `ui_rust` and `ui_cpp` (section 4.7); every guest gets a fresh canvas, and all three budgets are empty after it |
 | `test_mim` | the `mim` binary end to end (section 4.5) |
 
 ### 3.1 Hostile guests
@@ -115,6 +115,8 @@ says otherwise. `test_guest` checks whether each one loads and what it logged.
 | `cv_bad_image` | draws image 7, never loaded | trap: no such image |
 | `cv_negative_arc` | an arc of radius -1 | trap: negative radius |
 | `cv_bad_png` | loads a PNG signature with nothing after it, then 16 bytes from 8 before the end of memory | the first is refused (0, logged `refused`), the second traps: png outside guest memory |
+| `read_events_edge` | reads one event into the last 8 bytes of memory, then two into the same place | the first returns 0 (logged `edge`: no events outside `app_tick`), the second traps: events outside guest memory, though there was nothing to copy |
+| `read_events_huge_cap` | a buffer of 2^29 events, which is 2^32 bytes: 0 if multiplied in 32 bits | trap: events outside guest memory |
 
 `test_guest` also feeds 256 bytes of noise and the first half of a real module: both rejected.
 
@@ -217,7 +219,8 @@ and the first pixel, and writes the frame to `<name>.actual.png` next to the tes
 an artifact).
 
 `test_golden` draws one scene per primitive on a 320 × 180 canvas; `test_guest` compares the
-canvas demo's whole 1280 × 720 frame. To change a golden image on purpose:
+canvas demo's whole 1280 × 720 frame, and two frames of the UI replay (`ui_home`, `ui_details`).
+To change a golden image on purpose:
 
 ```sh
 cd build/debug/tests && MIM_UPDATE_GOLDEN=1 ./test_golden && MIM_UPDATE_GOLDEN=1 ./test_guest
@@ -225,6 +228,21 @@ cd build/debug/tests && MIM_UPDATE_GOLDEN=1 ./test_golden && MIM_UPDATE_GOLDEN=1
 
 and look at every image it rewrote before committing it: a golden image only says the output
 didn't change, not that it was right.
+
+### 4.7 Scripted input
+
+`test_guest`'s `run` takes a list of keys, each with the frame it goes down or up in, and hands
+each frame's keys to `guest_tick` the way `pl_tick` would: keys first, the time last. The frames
+are 50 ms apart with `dt` pinned at 0.05 s, so anything animated depends on the frame count
+only. An `after_frame` hook copies the frame buffer at the frames worth keeping.
+
+- `test_ui_replay`, the 4c test: right five times, down, down, OK, then Back. The log shows each
+  focus move, including that the tile under the same spot in the next row is the fifth, not the
+  sixth, because the rows scrolled differently. Both guests draw the same frames; the home
+  screen (once the scroll and the focus spring have settled) and the details page match their
+  golden images; and the home screen after Back is exactly the one before OK.
+- `test_ui_repeat`: right held for 1 s moves once, then at 0.30 s and every 0.15 s after (six
+  moves), and stops when it's let go; Back on the top row quits.
 
 ## 5. Sanitizer and tool notes
 
@@ -342,6 +360,8 @@ machine (load around 2, so the slowest frame is noisy):
 | `canvas_rust`: the home screen, every primitive | 11.1 ms (first frame 13.7, rasterising every glyph) | 5.6 ms |
 | `canvas_cpp`: the same frame | 12.0 ms | 5.7 ms |
 | `bounce_rust`: a full-screen fill and a box | 2.5 ms | 1.0 ms |
+| `ui_rust`: the app UI's home screen, rounded tiles and their titles | 8.1 ms | 3.0 ms |
+| `ui_cpp`: the same frame | 6.6 ms | 2.6 ms |
 
 A frame is 16.7 ms. What made the difference, found with callgrind: in strict ISO C mode
 `fminf` and `fmaxf` are calls into libm, 16% of the time in the per-pixel loops, now

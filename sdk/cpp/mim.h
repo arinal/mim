@@ -1,4 +1,4 @@
-//===-- mim.h - The C++ guest SDK: log, the canvas, a log line builder ----===//
+//===-- mim.h - The C++ guest SDK: log, input, the canvas -----------------===//
 //
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
@@ -72,6 +72,39 @@ private:
 /// Writes one line to the host's log
 inline void log(Level level, const char *msg) {
     (Line() << msg).send(level);
+}
+
+/// A key on the remote
+enum class Key : uint32_t { left = mim_key_left,
+                            right = mim_key_right,
+                            up = mim_key_up,
+                            down = mim_key_down,
+                            ok = mim_key_ok,
+                            back = mim_key_back };
+
+/// A key went down (`pressed`) or came back up. The host drops the OS's key repeat, so an app
+/// that wants a held key to repeat times it itself.
+struct Event {
+    Key key;
+    bool pressed;
+};
+
+/// Sets `event` to the next of this frame's events, oldest first, and returns true; each comes
+/// once. Skips any event whose kind or key this SDK doesn't know, so a newer host can add more.
+inline bool next_event(Event &event) {
+    for (;;) {
+        // a kind and a key, as the host writes them
+        uint32_t raw[mim_event_size / 4];
+        if (mim_read_events(raw, 1) == 0) {
+            return false;
+        }
+        if ((raw[0] != mim_event_press && raw[0] != mim_event_release) || raw[1] < mim_key_left || raw[1] > mim_key_back) {
+            continue;
+        }
+        event.key = Key(raw[1]);
+        event.pressed = raw[0] == mim_event_press;
+        return true;
+    }
 }
 
 /// The canvas: 2D drawing shaped like HTML5's. What's drawn shows when app_tick returns, and stays
@@ -170,7 +203,8 @@ inline void fill_rect(float x, float y, float width, float height) {
 class Image {
 public:
     /// No image yet: not ok(). constexpr, so a global one needs no constructor run.
-    constexpr Image() : handle_(0) {}
+    constexpr Image() : handle_(0) {
+    }
 
     /// Decodes a PNG, up to 4096 × 4096; check ok(): it fails if the host can't decode it, or has 64 already
     static Image load(const void *png, uint32_t size) {
@@ -187,7 +221,8 @@ public:
     }
 
 private:
-    explicit Image(uint32_t handle) : handle_(handle) {}
+    explicit Image(uint32_t handle) : handle_(handle) {
+    }
     uint32_t handle_;
 };
 

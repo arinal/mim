@@ -15,9 +15,19 @@ enum {
     mim_screen_width = 1280,
     mim_screen_height = 720,
     mim_log_max = 200,
+    mim_event_size = 8,
+    mim_event_press = 1,
+    mim_event_release = 2,
+    mim_key_left = 1,
+    mim_key_right = 2,
+    mim_key_up = 3,
+    mim_key_down = 4,
+    mim_key_ok = 5,
+    mim_key_back = 6,
 };
 
 __attribute__((import_module("mim"), import_name("log"))) void mim_log(uint32_t level, const void *text, uint32_t text_len);
+__attribute__((import_module("mim"), import_name("read_events"))) uint32_t mim_read_events(void *events, uint32_t cap);
 __attribute__((import_module("mim"), import_name("cv_save"))) void mim_cv_save();
 __attribute__((import_module("mim"), import_name("cv_restore"))) void mim_cv_restore();
 __attribute__((import_module("mim"), import_name("cv_translate"))) void mim_cv_translate(float x, float y);

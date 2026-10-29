@@ -15,6 +15,15 @@ enum {
     guest_screen_width = 1280,
     guest_screen_height = 720,
     guest_log_max = 200,
+    guest_event_size = 8,
+    guest_event_press = 1,
+    guest_event_release = 2,
+    guest_key_left = 1,
+    guest_key_right = 2,
+    guest_key_up = 3,
+    guest_key_down = 4,
+    guest_key_ok = 5,
+    guest_key_back = 6,
 };
 
 // The guest's linear memory, as one import call sees it
@@ -32,6 +41,7 @@ static inline bool guest_mem_has(const guest_mem_t *const mem, const uint32_t pt
 // are already checked and arrive as host pointers; `ptr` arguments are guest addresses.
 // An import that returns a value gets `result`, set to 0, to write it into.
 const char *host_log(const guest_mem_t *const mem, const uint32_t level, const uint8_t *const text, const uint32_t text_len);
+const char *host_read_events(const guest_mem_t *const mem, const uint32_t events, const uint32_t cap, uint32_t *const result);
 const char *host_cv_save(const guest_mem_t *const mem);
 const char *host_cv_move_to(const guest_mem_t *const mem, const float x, const float y);
 const char *host_cv_line_to(const guest_mem_t *const mem, const float x, const float y);

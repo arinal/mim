@@ -25,20 +25,52 @@ typedef struct display_context_t {
 PL_STATIC_ASSERT(display_fits, sizeof(display_context_t) <= sizeof(pl_display_t));
 
 // defined in pl_posix.c; pl_tick calls it while a window is open
-extern bool (*pl_posix_display_poll)(void);
+extern size_t (*pl_posix_display_poll)(pl_event_t *events, size_t cap, uint64_t now, bool *quit);
 
 static bool g_open;
 
-static bool poll_events(void) {
-    bool quit = false;
+// The keyboard keys that stand for a remote's
+static const struct {
+    SDL_Keycode sdl;
+    pl_key_e key;
+} remote_keys[] = {
+    {SDLK_LEFT, pl_key_left},
+    {SDLK_RIGHT, pl_key_right},
+    {SDLK_UP, pl_key_up},
+    {SDLK_DOWN, pl_key_down},
+    {SDLK_RETURN, pl_key_ok},
+    {SDLK_KP_ENTER, pl_key_ok},
+    {SDLK_ESCAPE, pl_key_back},
+    {SDLK_BACKSPACE, pl_key_back},
+};
+
+// Sets *out to the remote key `key` stands for; false for any other key
+static bool remote_key(const SDL_Keycode key, pl_key_e *const out) {
+    for (size_t i = 0; i < sizeof(remote_keys) / sizeof(remote_keys[0]); i++) {
+        if (remote_keys[i].sdl == key) {
+            *out = remote_keys[i].key;
+            return true;
+        }
+    }
+    return false;
+}
+
+static size_t poll_events(pl_event_t *const events, const size_t cap, const uint64_t now, bool *const quit) {
+    size_t count = 0;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         // with one window, closing it also sends SDL_EVENT_QUIT; either one is enough
         if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-            quit = true;
+            *quit = true;
+        }
+        pl_key_e key;
+        // the OS's repeats are dropped: an app that wants repeats times them itself
+        const bool is_key = event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP;
+        if (is_key && !event.key.repeat && remote_key(event.key.key, &key) && count < cap) {
+            events[count++] = (pl_event_t){pl_event_key, now, key, event.type == SDL_EVENT_KEY_DOWN};
         }
     }
-    return quit;
+    return count;
 }
 
 pl_result_e pl_display_open(pl_display_t *const display, const char *const title, const uint32_t width, const uint32_t height) {

@@ -57,6 +57,43 @@ const char *host_log(const guest_mem_t *const mem, const uint32_t level, const u
     return NULL;
 }
 
+// What the guest calls each key
+static const uint32_t guest_keys[] = {
+    [pl_key_left] = guest_key_left,
+    [pl_key_right] = guest_key_right,
+    [pl_key_up] = guest_key_up,
+    [pl_key_down] = guest_key_down,
+    [pl_key_ok] = guest_key_ok,
+    [pl_key_back] = guest_key_back,
+};
+
+// Writes `value` at `p` as WASM stores it: little-endian, any alignment
+static void store_u32(uint8_t *const p, const uint32_t value) {
+    for (size_t i = 0; i < 4; i++) {
+        p[i] = (uint8_t)(value >> (8 * i));
+    }
+}
+
+const char *host_read_events(const guest_mem_t *const mem, const uint32_t events, const uint32_t cap, uint32_t *const result) {
+    // the whole buffer, so a bad one traps on a quiet frame too
+    if (cap > mem->size / guest_event_size || !guest_mem_has(mem, events, (size_t)cap * guest_event_size)) {
+        return "mim.read_events: events outside guest memory";
+    }
+    guest_t *const guest = g_guest;
+    uint32_t n = 0;
+    while (n < cap && guest->internal.events_read < guest->internal.event_count) {
+        const pl_event_t *const e = &guest->internal.events[guest->internal.events_read++];
+        if (e->type == pl_event_key) {
+            uint8_t *const out = mem->base + events + (size_t)n * guest_event_size;
+            store_u32(out, e->down ? guest_event_press : guest_event_release);
+            store_u32(out + 4, guest_keys[e->key]);
+            n++;
+        }
+    }
+    *result = n;
+    return NULL;
+}
+
 //===----------------------------------------------------------------------===//
 // Load, tick, unload
 //===----------------------------------------------------------------------===//
@@ -183,15 +220,28 @@ bool guest_load(
     return call(guest, init);
 }
 
-guest_status_e guest_tick(guest_t *const guest, const uint64_t abs_time_ms, const float dt_seconds) {
+guest_status_e guest_tick(
+    guest_t *const guest,
+    const uint64_t abs_time_ms,
+    const float dt_seconds,
+    const pl_event_t *const events,
+    const size_t event_count
+) {
     if (!guest->internal.alive) {
         return guest_dead;
     }
     if (guest->internal.quit) {
         return guest_quit;
     }
+    guest->internal.events = events;
+    guest->internal.event_count = event_count;
+    guest->internal.events_read = 0;
     // m3_CallV takes an f32 as a double, the C rule for variadic arguments
-    if (!call(guest, guest->internal.tick, abs_time_ms, (double)dt_seconds)) {
+    const bool ok = call(guest, guest->internal.tick, abs_time_ms, (double)dt_seconds);
+    // outside app_tick there are no events
+    guest->internal.events = NULL;
+    guest->internal.event_count = 0;
+    if (!ok) {
         return guest_dead;
     }
     // any value is valid: non-zero means "keep going", as in M5

@@ -77,9 +77,10 @@ void pl_sleep_until_ns(const uint64_t deadline_ns) {
 // Set by the signal handler, read by pl_tick; setting a sig_atomic_t is all a handler may safely do
 static volatile sig_atomic_t g_quit;
 
-// Set by pl_display_sdl.c while a window is open: drains the window's events, returns true
-// for a quit. A pointer, so only programs that open a window link SDL.
-bool (*pl_posix_display_poll)(void);
+// Set by pl_display_sdl.c while a window is open: drains the window's events, writes up to `cap`
+// key events stamped `now`, and returns how many; sets *quit for a quit. A pointer, so only
+// programs that open a window link SDL.
+size_t (*pl_posix_display_poll)(pl_event_t *events, size_t cap, uint64_t now, bool *quit);
 
 static void on_quit_signal(const int sig) {
     (void)sig;
@@ -102,15 +103,18 @@ size_t pl_tick(pl_event_t *const events, const size_t cap) {
         installed = true;
     }
 
-    // drained every tick, quit or not
-    const bool display_quit = pl_posix_display_poll != NULL && pl_posix_display_poll();
     const uint64_t now = pl_time_now_ns();
+    bool display_quit = false;
     size_t count = 0;
+    // drained every tick, quit or not; two slots stay free for the quit and the time
+    if (pl_posix_display_poll != NULL) {
+        count = pl_posix_display_poll(events, cap - 2, now, &display_quit);
+    }
     if (g_quit || display_quit) {
         g_quit = 0;
-        events[count++] = (pl_event_t){pl_event_quit, now};
+        events[count++] = (pl_event_t){.type = pl_event_quit, .time_ns = now};
     }
-    events[count++] = (pl_event_t){pl_event_time, now};
+    events[count++] = (pl_event_t){.type = pl_event_time, .time_ns = now};
     return count;
 }
 

@@ -5,7 +5,7 @@
 #
 # Argument types:
 #   i32 u32 i64 u64 f32 f64   one WASM value each
-#   ptr     a guest address (i32). The handler checks what it points at.
+#   ptr     a guest address (i32). The handler checks what it points at, and may write there.
 #   bytes   two i32s, address and length. Checked before the handler runs.
 # An import can return one number: `-> <type>`.
 #
@@ -21,6 +21,22 @@ const log_max        200
 
 # level: 0 debug ... 3 error
 fn log      (level: u32, text: bytes)
+
+# Input: what the remote did since the last frame. An event is event_size bytes, two u32s:
+# its kind, then its key. The host drops the OS's key repeat; an app times its own.
+const event_size        8
+const event_press       1
+const event_release     2
+const key_left          1
+const key_right         2
+const key_up            3
+const key_down          4
+const key_ok            5
+const key_back          6
+# Copies up to `cap` of this frame's events to `events`, oldest first, and returns how many.
+# Each is returned once; a later call in the same frame gets the rest. A buffer of `cap` events
+# that isn't all inside guest memory traps, even with no events to copy.
+fn read_events      (events: ptr, cap: u32) -> u32
 
 include runtime/canvas/canvas.h
 

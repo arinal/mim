@@ -86,12 +86,29 @@ typedef enum pl_event_type_e {
     pl_event_time,
     /// The user asked MIM to stop: Ctrl-C, SIGTERM, or the window's close button
     pl_event_quit,
+    /// A key went down or up; the OS's key repeat is dropped
+    pl_event_key,
 } pl_event_type_e;
+
+/// The keys a TV remote has
+typedef enum pl_key_e {
+    pl_key_left,
+    pl_key_right,
+    pl_key_up,
+    pl_key_down,
+    /// Enter
+    pl_key_ok,
+    /// Escape or Backspace
+    pl_key_back,
+} pl_key_e;
 
 typedef struct pl_event_t {
     pl_event_type_e type;
     /// pl_time_now_ns() when pl_tick picked the event up
     uint64_t time_ns;
+    /// pl_event_key only: which key, and whether it went down
+    pl_key_e key;
+    bool down;
 } pl_event_t;
 
 /// Collects what happened since the last call, without waiting
@@ -102,7 +119,8 @@ typedef struct pl_event_t {
 /// * `events`: Buffer owned by the caller
 /// * `cap`: Its size, at least 2
 ///
-/// Returns how many events it wrote: at most one pl_event_quit, then pl_event_time last
+/// Returns how many events it wrote: the keys in the order they happened (any beyond `cap - 2`
+/// are dropped), then at most one pl_event_quit, then pl_event_time last
 size_t pl_tick(pl_event_t *const events, const size_t cap);
 
 //===----------------------------------------------------------------------===//
