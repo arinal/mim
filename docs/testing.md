@@ -267,7 +267,7 @@ gcov, debug build, all 20 tests:
 
 | File | Lines | Branches taken |
 |---|---|---|
-| `platform/linux/pl_linux.c` | 97.6% | 71.3% |
+| `platform/posix/pl_posix.c` | 97.6% | 71.3% |
 | `runtime/mem/mem.c` | 91.7% (see 5: death tests not counted) | 75.0% |
 | `runtime/guest/guest.c` | 95.5% | 76.9% |
 | `runtime/guest/host_cv.c` | 100% | 78.6% |

@@ -8,7 +8,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(MIM_PLATFORM linux CACHE STRING "Platform layer to build, from platform/<platform>")
+set(MIM_PLATFORM posix CACHE STRING "Platform layer to build, from platform/<platform>")
 set(MIM_SANITIZER "" CACHE STRING "'' (none), 'address' (ASan + UBSan) or 'thread' (TSan + UBSan)")
 option(MIM_VALGRIND "Run tests under valgrind" OFF)
 option(MIM_FUZZ "Build fuzz_mem as a libFuzzer target (clang only)" OFF)

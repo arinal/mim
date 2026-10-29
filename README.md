@@ -50,10 +50,10 @@ flowchart TB
 
         subgraph platforms["<b>platform/</b>: one per target, picked at build time"]
             direction LR
-            linux["<b>linux/</b><br/>pl_linux.c · pl_display_sdl.c<br/>on Linux + SDL3<br/><i>libc and libSDL3.so stay outside mim:<br/>shared libraries, loaded when it starts</i>"]
+            posix["<b>posix/</b><br/>pl_posix.c · pl_display_sdl.c<br/>on Linux or macOS + SDL3<br/><i>libc and libSDL3 (.so or .dylib) stay outside mim:<br/>shared libraries, loaded when it starts</i>"]
             baremetal["<b>baremetal/</b> (stage 9)<br/>boot stub, UART, timer, ramfb<br/>on QEMU aarch64 virt"]
             windows["<b>windows/</b> (not planned)<br/>the same pl.h<br/>on Win32 + SDL3"]
-            linux ~~~ baremetal ~~~ windows
+            posix ~~~ baremetal ~~~ windows
         end
     end
 

@@ -1,4 +1,4 @@
-//===-- pl_linux.c - Linux implementation of pl.h -------------------------===//
+//===-- pl_posix.c - POSIX implementation of pl.h -------------------------===//
 //
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-// -std=c99 hides POSIX from glibc's headers; this brings back POSIX 2008 + pthread_setname_np
+// -std=c99 hides POSIX from glibc's headers; this brings back POSIX 2008 + pthread_setname_np.
+// macOS shows them anyway.
 #define _GNU_SOURCE
 
 #include "platform/pl.h"
@@ -53,11 +54,20 @@ void pl_sleep_ms(const uint32_t ms) {
 }
 
 void pl_sleep_until_ns(const uint64_t deadline_ns) {
+#ifdef __APPLE__
+    // macOS has no clock_nanosleep: sleep for what is left, and again after a signal
+    for (uint64_t now = pl_time_now_ns(); now < deadline_ns; now = pl_time_now_ns()) {
+        const uint64_t left_ns = deadline_ns - now;
+        const struct timespec left = {(time_t)(left_ns / 1000000000u), (long)(left_ns % 1000000000u)};
+        nanosleep(&left, NULL);
+    }
+#else
     const struct timespec deadline = {(time_t)(deadline_ns / 1000000000u), (long)(deadline_ns % 1000000000u)};
     // the deadline is absolute, so after a signal the same call just goes back to sleep.
     // A deadline in the past returns at once.
     while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &deadline, NULL) == EINTR) {
     }
+#endif
 }
 
 //===----------------------------------------------------------------------===//
@@ -69,7 +79,7 @@ static volatile sig_atomic_t g_quit;
 
 // Set by pl_display_sdl.c while a window is open: drains the window's events, returns true
 // for a quit. A pointer, so only programs that open a window link SDL.
-bool (*pl_linux_display_poll)(void);
+bool (*pl_posix_display_poll)(void);
 
 static void on_quit_signal(const int sig) {
     (void)sig;
@@ -93,7 +103,7 @@ size_t pl_tick(pl_event_t *const events, const size_t cap) {
     }
 
     // drained every tick, quit or not
-    const bool display_quit = pl_linux_display_poll != NULL && pl_linux_display_poll();
+    const bool display_quit = pl_posix_display_poll != NULL && pl_posix_display_poll();
     const uint64_t now = pl_time_now_ns();
     size_t count = 0;
     if (g_quit || display_quit) {
@@ -225,6 +235,10 @@ typedef struct thread_context_t {
         int (*proc)(void *arg);
         void *arg;
     } callback;
+#ifdef __APPLE__
+    // macOS can only name the calling thread, so the new thread names itself from this
+    char name[pl_thread_name_max_length];
+#endif
 } thread_context_t;
 
 PL_STATIC_ASSERT(thread_fits, sizeof(thread_context_t) <= sizeof(pl_thread_t));
@@ -233,6 +247,11 @@ PL_STATIC_ASSERT(mutex_fits, sizeof(pthread_mutex_t) <= sizeof(pl_mutex_t));
 // pthread wants void * (*)(void *); the thread function returns int
 static void *pl_thread_proc(void *arg) {
     thread_context_t *const ctx = arg;
+#ifdef __APPLE__
+    if (ctx->name[0] != '\0') {
+        pthread_setname_np(ctx->name);
+    }
+#endif
     return (void *)(intptr_t)ctx->callback.proc(ctx->callback.arg);
 }
 
@@ -240,14 +259,19 @@ pl_result_e pl_thread_create(pl_thread_t *const thread, int (*const thread_proc)
     thread_context_t *const ctx = (thread_context_t *)thread;
     ctx->callback.proc = thread_proc;
     ctx->callback.arg = arg;
+#ifdef __APPLE__
+    snprintf(ctx->name, sizeof(ctx->name), "%s", name != NULL ? name : "");
+#endif
     if (pthread_create(&ctx->id, NULL, pl_thread_proc, ctx) != 0) {
         return pl_result_io_error;
     }
+#ifndef __APPLE__
     if (name != NULL) {
         char short_name[pl_thread_name_max_length];
         snprintf(short_name, sizeof(short_name), "%s", name);
         pthread_setname_np(ctx->id, short_name);
     }
+#endif
     return pl_result_ok;
 }
 

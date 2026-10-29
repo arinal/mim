@@ -24,8 +24,8 @@ typedef struct display_context_t {
 
 PL_STATIC_ASSERT(display_fits, sizeof(display_context_t) <= sizeof(pl_display_t));
 
-// defined in pl_linux.c; pl_tick calls it while a window is open
-extern bool (*pl_linux_display_poll)(void);
+// defined in pl_posix.c; pl_tick calls it while a window is open
+extern bool (*pl_posix_display_poll)(void);
 
 static bool g_open;
 
@@ -67,7 +67,7 @@ pl_result_e pl_display_open(pl_display_t *const display, const char *const title
         return pl_result_io_error;
     }
     ctx->width = width;
-    pl_linux_display_poll = poll_events;
+    pl_posix_display_poll = poll_events;
     g_open = true;
     return pl_result_ok;
 }
@@ -85,7 +85,7 @@ void pl_display_present(pl_display_t *const display, const uint32_t *const pixel
 void pl_display_close(pl_display_t *const display) {
     assert(g_open);
     display_context_t *const ctx = (display_context_t *)display;
-    pl_linux_display_poll = NULL;
+    pl_posix_display_poll = NULL;
     SDL_DestroyTexture(ctx->texture);
     SDL_DestroyRenderer(ctx->renderer);
     SDL_DestroyWindow(ctx->window);
