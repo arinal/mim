@@ -12,7 +12,7 @@ set(wasm_flags --target=wasm32 -mcpu=mvp -nostdlib -O2 -Wall -Wextra -Werror
 
 # C++
 set(cpp_sdk ${PROJECT_SOURCE_DIR}/sdk/cpp)
-set(cpp_sources ${cpp_sdk}/mim.cpp ${CMAKE_CURRENT_SOURCE_DIR}/hello_cpp/hello.cpp)
+set(cpp_sources ${cpp_sdk}/mim.cpp ${CMAKE_CURRENT_SOURCE_DIR}/cpp/hello.cpp)
 add_custom_command(
     OUTPUT ${MIM_GUEST_DIR}/hello_cpp.wasm
     COMMAND ${MIM_WASM_CLANG} -x c++ -std=c++17 -fno-exceptions -fno-rtti ${wasm_flags} -I${cpp_sdk} -o ${MIM_GUEST_DIR}/hello_cpp.wasm ${cpp_sources}
@@ -28,7 +28,7 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -DIN=${poster} -DOUT=${poster_h} -DNAME=poster_png -P ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
     DEPENDS ${poster} ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
     VERBATIM)
-set(canvas_sources ${cpp_sdk}/mim.cpp ${CMAKE_CURRENT_SOURCE_DIR}/canvas_cpp/canvas.cpp)
+set(canvas_sources ${cpp_sdk}/mim.cpp ${CMAKE_CURRENT_SOURCE_DIR}/cpp/canvas.cpp)
 add_custom_command(
     OUTPUT ${MIM_GUEST_DIR}/canvas_cpp.wasm
     COMMAND ${MIM_WASM_CLANG} -x c++ -std=c++17 -fno-exceptions -fno-rtti ${wasm_flags} -I${cpp_sdk} -I${CMAKE_CURRENT_BINARY_DIR} -o ${MIM_GUEST_DIR}/canvas_cpp.wasm ${canvas_sources}
@@ -37,7 +37,7 @@ add_custom_command(
 list(APPEND outputs ${MIM_GUEST_DIR}/canvas_cpp.wasm)
 
 # Hostile guests: one per case, from <case>.c and common.c
-set(evil_dir ${CMAKE_CURRENT_SOURCE_DIR}/evil)
+set(evil_dir ${CMAKE_CURRENT_SOURCE_DIR}/cpp/evil)
 set(evil_cases bad_pointer wrapping_pointer log_edge huge_len bad_level log_injection log_long greedy recursion
     missing_export wrong_signature wrong_types wrong_import unknown_import huge_memory imported_memory tick_trap
     cv_save_deep cv_path_full cv_bad_image cv_negative_arc cv_bad_png)

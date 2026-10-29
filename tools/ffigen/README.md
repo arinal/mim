@@ -64,9 +64,10 @@ const log_max        200
 # level: 0 debug ... 3 error
 fn log      (level: u32, text: bytes)
 
-fn cv_fill_rect    (x: f32, y: f32, width: f32, height: f32)
+include runtime/canvas/canvas.h
+fn cv_fill_rect    (x: f32, y: f32, width: f32, height: f32) = cv_fill_rect
 # how wide cv_fill_text would draw it, before the transform
-fn cv_measure_text (text: bytes) -> f32
+fn cv_measure_text (text: bytes) -> f32 = cv_measure_text
 ```
 
 - `const <name> <value>`: a constant both sides share. A non-negative integer that fits a C
@@ -74,6 +75,10 @@ fn cv_measure_text (text: bytes) -> f32
 - `fn <name> (<arg>: <type>, ...)`: an import, returning nothing.
 - `fn <name> (<arg>: <type>, ...) -> <type>`: an import returning one number, any of the six
   number types. Never `ptr` or `bytes`: the host can't hand a guest its own memory.
+- `fn ... = <host fn>`: an import the thunk does itself, by calling `<host fn>` with the same
+  arguments, so there's no handler to write. Only for imports that can't trap, and never with a
+  `ptr` argument, since nothing would check it.
+- `include <path>`: a header `ffi.c` includes, declaring the functions `=` names.
 
 Names are `lower_case`.
 
@@ -168,18 +173,39 @@ static const void *thunk_cv_measure_text(IM3Runtime runtime, IM3ImportContext ct
 The guests' declarations return it: `-> f32` in Rust, `float mim_cv_measure_text(...)` in C. Its
 wasm3 signature is `f(ii)`.
 
+### A direct call
+
+For `fn cv_fill_rect (x: f32, y: f32, width: f32, height: f32) = cv_fill_rect` there's no
+handler. The thunk calls the canvas itself, and the compiler checks the call against
+`runtime/canvas/canvas.h`. Without a `bytes` argument it never looks at guest memory:
+
+```c
+// runtime/guest/ffi.c
+static const void *thunk_cv_fill_rect(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    (void)runtime;
+    (void)mem;
+    const float x = *(const float *)&sp[0];
+    ...
+    cv_fill_rect(x, y, width, height);
+    return NULL;
+}
+```
+
+A result is written straight into `sp[0]`.
+
 Constants come out as `guest_<name>` on the host, `mim_<name>` in C and C++ guests, and
 `<NAME>: usize` in Rust.
 
 ## What stays hand-written
 
-- **The handler**, `host_<name>`, linked into `mim_guest` (today in `runtime/guest/guest.c`).
-  It does what the import does, and returns `NULL`, or a message that traps the guest. Its
+- **The handler**, `host_<name>`, for every import without `=`, linked into `mim_guest`
+  (`runtime/guest/guest.c` and `host_cv.c`). It does what the import does, and returns `NULL`, or a message that traps the guest. Its
   prototype is generated, so a handler with the wrong argument types doesn't compile.
 - **The safe wrappers** in `sdk/rust/src/lib.rs` and `sdk/cpp/mim.h`, such as `mim::log` and
   `Line`. That's where the guest API gets designed, so they're better written by hand than
   generated.
-- **Hostile guests that lie on purpose**, such as `guests/evil/wrong_import.c`, which keep
+- **Hostile guests that lie on purpose**, such as `guests/cpp/evil/wrong_import.c`, which keep
   their own wrong declarations.
 - **The exports** (`app_init`, `app_tick`, `app_shutdown`), which are checked in `guest.c`.
 
@@ -187,9 +213,10 @@ Constants come out as `guest_<name>` on the host, `mim_<name>` in C and C++ gues
 
 1. Add a `fn` line to `sdk/mim.ffi`.
 2. Run `cargo run -p ffigen`.
-3. Write `host_<name>`. The compiler checks it against the generated prototype.
+3. Write `host_<name>`, unless the line ends in `=`. The compiler checks it against the
+   generated prototype.
 4. Add the safe wrappers to both SDKs.
-5. For anything the handler checks itself, add a hostile guest in `guests/evil/`, its
+5. For anything the handler checks itself, add a hostile guest in `guests/cpp/evil/`, its
    expected output in `tests/test_guest.c`, and a row in `docs/testing.md`. A `bytes` check
    is already covered by the generated code.
 6. Commit the table and the four generated files together.
@@ -205,6 +232,7 @@ Everything that would generate code that doesn't compile, or that the host would
   Rust keywords (`int`, `this`, `type`, `_`, ...)
 - more than 8 WASM values in one import: that's an import that wants a struct
 - a constant that doesn't fit a C `int`
+- `=` on an import with a `ptr` argument, or naming a keyword
 - a table without any `fn`
 
 Errors point at the problem:

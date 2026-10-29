@@ -100,7 +100,7 @@ not built yet.
     implementation.
 
 CI checks the walls: nothing outside `platform/` may include an OS header (`unistd.h`,
-`pthread.h`, `SDL3/…`), and a set of hostile guests in `guests/evil/` try to break out of the
+`pthread.h`, `SDL3/…`), and a set of hostile guests in `guests/cpp/evil/` try to break out of the
 sandbox.
 
 ### One frame
@@ -227,7 +227,8 @@ runtime/    the host: main loop, guest loader, canvas, frame clock, memory budge
 sdk/        what an app links against: sdk/rust (the mim crate) and sdk/cpp (mim.h), and
             sdk/mim.ffi, the table every import is generated from
 tools/      ffigen: writes the import glue for the host and both SDKs from sdk/mim.ffi
-guests/     sample apps, plus guests/evil: hostile ones the tests throw at the host
+guests/     sample apps in guests/rust and guests/cpp, plus guests/cpp/evil: hostile ones the tests
+            throw at the host
 tests/      one small executable per test, test_mim.sh for the real binary, tests/golden: the
             images the canvas must draw
 extern/     wasm3 and stb, each vendored with a small patch marked MIM, and the built-in font

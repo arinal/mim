@@ -10,4 +10,4 @@ license.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-mim = { path = "../../sdk/rust" }
+mim = { path = "../../../sdk/rust" }

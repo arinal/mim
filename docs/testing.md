@@ -87,7 +87,7 @@ There are no fixtures and no test registry: `main` calls the test functions in o
 
 ### 3.1 Hostile guests
 
-`guests/evil/` holds one WASM module per attack. Each is `<case>.c` plus `common.c` (the normal
+`guests/cpp/evil/` holds one WASM module per attack. Each is `<case>.c` plus `common.c` (the normal
 `app_tick` and `app_shutdown`, and the `memset` clang emits calls to), unless `guests/CMakeLists.txt`
 says otherwise. `test_guest` checks whether each one loads and what it logged.
 
@@ -353,7 +353,7 @@ store; images are sampled with integer weights, two channels at a time.
 - **A C test:** write `tests/test_<name>.c` with a `main` that uses `CHECK`, add
   `mim_add_test(test_<name>)` to `tests/CMakeLists.txt`, and link anything beyond `mim_mem`
   with `target_link_libraries`. It then runs under every preset, valgrind included.
-- **A hostile guest:** write `guests/evil/<case>.c` including `evil.h`, add `<case>` to
+- **A hostile guest:** write `guests/cpp/evil/<case>.c` including `evil.h`, add `<case>` to
   `evil_cases` in `guests/CMakeLists.txt` (set `evil_<case>_sources` or `evil_<case>_flags` if it
   must not use `common.c` or needs link flags), and add an `expect("evil_<case>", ...)` line to
   `test_hostile` in `tests/test_guest.c`.

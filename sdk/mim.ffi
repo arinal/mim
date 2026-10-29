@@ -10,7 +10,8 @@
 # An import can return one number: `-> <type>`.
 #
 # Each import is handled by host_<name> in the runtime, written by hand. It returns NULL, or a
-# message that traps the guest.
+# message that traps the guest. One ending in `= <host fn>` calls that function instead, from a
+# header named by `include`, and can't trap.
 
 # the size every guest draws at
 const screen_width   1280
@@ -21,6 +22,8 @@ const log_max        200
 # level: 0 debug ... 3 error
 fn log      (level: u32, text: bytes)
 
+include runtime/canvas/canvas.h
+
 # The canvas, shaped like HTML5's: what a guest draws shows when app_tick returns, and stays until
 # it's drawn over. Coordinates are pixels, (0, 0) at the top left, before the transform.
 # Colours are 0xAARRGGBB: alpha 0xFF covers, less blends. A call with a NaN or infinite argument
@@ -30,43 +33,43 @@ fn log      (level: u32, text: bytes)
 # size and the clip. It starts as: no transform, opaque black, width 1, size 10, the whole screen.
 # More than 32 saves traps; a restore with nothing saved does nothing.
 fn cv_save          ()
-fn cv_restore       ()
-fn cv_translate     (x: f32, y: f32)
+fn cv_restore       () = cv_restore
+fn cv_translate     (x: f32, y: f32) = cv_translate
 # text and line widths scale by sqrt(|x * y|)
-fn cv_scale         (x: f32, y: f32)
-fn cv_fill_style    (color: u32)
-fn cv_stroke_style  (color: u32)
+fn cv_scale         (x: f32, y: f32) = cv_scale
+fn cv_fill_style    (color: u32) = cv_fill_style
+fn cv_stroke_style  (color: u32) = cv_stroke_style
 # 0 or less is ignored
-fn cv_line_width    (width: f32)
+fn cv_line_width    (width: f32) = cv_line_width
 # the font's em square; 0 or less is ignored
-fn cv_font_size     (size: f32)
+fn cv_font_size     (size: f32) = cv_font_size
 # narrows the clip, rounded to whole pixels by their centres; only restore widens it again
-fn cv_clip_rect     (x: f32, y: f32, width: f32, height: f32)
+fn cv_clip_rect     (x: f32, y: f32, width: f32, height: f32) = cv_clip_rect
 
 # The path: up to 16384 points (curves become lines) in 1024 subpaths; more traps.
-fn cv_begin_path    ()
+fn cv_begin_path    () = cv_begin_path
 fn cv_move_to       (x: f32, y: f32)
 fn cv_line_to       (x: f32, y: f32)
 # angles in radians, clockwise on screen unless counterclockwise is non-zero; a negative radius traps
 fn cv_arc           (x: f32, y: f32, radius: f32, start: f32, end: f32, counterclockwise: u32)
 # a closed subpath; the radius is at most half the shorter side
 fn cv_rounded_rect  (x: f32, y: f32, width: f32, height: f32, radius: f32)
-fn cv_close_path    ()
+fn cv_close_path    () = cv_close_path
 # by the non-zero winding rule, every subpath closed
-fn cv_fill          ()
+fn cv_fill          () = cv_fill
 # butt ends, mitred corners up to a miter limit of 10, then bevelled
-fn cv_stroke        ()
+fn cv_stroke        () = cv_stroke
 # leaves the path as it is
-fn cv_fill_rect     (x: f32, y: f32, width: f32, height: f32)
+fn cv_fill_rect     (x: f32, y: f32, width: f32, height: f32) = cv_fill_rect
 
 # A PNG, up to 4096 x 4096; returns a handle, or 0 if it can't be decoded or there's no room
 # (64 images at most). The bytes can go afterwards.
-fn cv_image_load    (png: bytes) -> u32
+fn cv_image_load    (png: bytes) -> u32 = cv_image_load
 # scaled into the rectangle, smoothed; a handle that isn't a loaded image traps
 fn cv_draw_image    (image: u32, x: f32, y: f32, width: f32, height: f32)
 
 # UTF-8 text in the built-in font (Liberation Sans, Latin), on its baseline at (x, y); bytes that
 # aren't UTF-8 draw as U+FFFD
-fn cv_fill_text     (text: bytes, x: f32, y: f32)
+fn cv_fill_text     (text: bytes, x: f32, y: f32) = cv_fill_text
 # how wide cv_fill_text would draw it, before the transform
-fn cv_measure_text  (text: bytes) -> f32
+fn cv_measure_text  (text: bytes) -> f32 = cv_measure_text

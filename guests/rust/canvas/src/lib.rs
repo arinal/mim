@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 
-//! A TV-style home screen that uses every canvas call; guests/canvas_cpp draws exactly the same
+//! A TV-style home screen that uses every canvas call; guests/cpp/canvas.cpp draws exactly the same
 //! frame, pixel for pixel. Never quits.
 
 #![no_std]
 
 use mim::cv::{self, Image};
-use mim::{Level, SCREEN_HEIGHT, SCREEN_WIDTH, Tick, log};
+use mim::{App, Level, SCREEN_HEIGHT, SCREEN_WIDTH, Tick, log};
 
 const W: f32 = SCREEN_WIDTH as f32;
 const H: f32 = SCREEN_HEIGHT as f32;
@@ -30,8 +30,6 @@ const BACKGROUND: u32 = 0xFF0E1117;
 const WHITE: u32 = 0xFFFFFFFF;
 const GREY: u32 = 0xFF8B949E;
 const BLUE: u32 = 0xFF2F81F7;
-
-static mut POSTER: Option<Image> = None;
 
 fn tile_x(i: usize) -> f32 {
     64.0 + i as f32 * (TILE_W + TILE_GAP)
@@ -93,66 +91,68 @@ fn star(cx: f32, cy: f32) {
     cv::fill();
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn app_init() {
-    let poster = Image::load(include_bytes!("../../assets/poster.png"));
-    if poster.is_none() {
-        log(Level::Error, "canvas: the poster didn't load");
-    }
-    // the only access to POSTER outside app_tick, and the host calls in on one thread
-    unsafe { POSTER = poster };
+struct Home {
+    poster: Option<Image>,
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn app_tick(abs_time_ms: u64, _dt_seconds: f32) -> Tick {
-    let Some(poster) = (unsafe { POSTER }) else {
-        return Tick::Quit;
-    };
-    cv::fill_style(BACKGROUND);
-    cv::fill_rect(0.0, 0.0, W, H);
-
-    // the header: a title, a dimmer word after it, and a label right-aligned
-    cv::font_size(40.0);
-    cv::fill_style(WHITE);
-    cv::fill_text("MIM", 64.0, 92.0);
-    let title = cv::measure_text("MIM");
-    cv::font_size(20.0);
-    cv::fill_style(GREY);
-    cv::fill_text("isn't M5", 64.0 + title + 16.0, 92.0);
-    let label = "4b \u{00B7} canvas";
-    cv::fill_text(label, W - 64.0 - cv::measure_text(label), 92.0);
-    cv::fill_style(0xFF30363D);
-    cv::fill_rect(64.0, 116.0, W - 128.0, 1.0);
-
-    cv::font_size(24.0);
-    cv::fill_style(WHITE);
-    cv::fill_text("Continue watching", 64.0, 190.0);
-    star(64.0 + cv::measure_text("Continue watching") + 30.0, 181.0);
-    for i in 0..TITLES.len() {
-        tile(i, poster);
+impl App for Home {
+    fn init() -> Self {
+        let poster = Image::load(include_bytes!("../../../assets/poster.png"));
+        if poster.is_none() {
+            log(Level::Error, "canvas: the poster didn't load");
+        }
+        Home { poster }
     }
 
-    // a spinner, turning with the time
-    let a = abs_time_ms as f32 * 0.004;
-    cv::stroke_style(BLUE);
-    cv::line_width(6.0);
-    cv::begin_path();
-    cv::arc(W - 100.0, 520.0, 28.0, a, a + 1.5 * PI, false);
-    cv::stroke();
-    cv::begin_path();
-    cv::arc(W - 100.0, 520.0, 10.0, 0.0, 2.0 * PI, false);
-    cv::fill_style(GREY);
-    cv::fill();
+    fn tick(&mut self, abs_time_ms: u64, _dt_seconds: f32) -> Tick {
+        let Some(poster) = self.poster else {
+            return Tick::Quit;
+        };
+        cv::fill_style(BACKGROUND);
+        cv::fill_rect(0.0, 0.0, W, H);
 
-    // a translucent bar along the bottom, its text centred
-    cv::fill_style(0xC0000000);
-    cv::fill_rect(0.0, H - 80.0, W, 80.0);
-    cv::font_size(22.0);
-    cv::fill_style(WHITE);
-    let hint = "Press OK to play";
-    cv::fill_text(hint, (W - cv::measure_text(hint)) / 2.0, H - 32.0);
-    Tick::Continue
+        // the header: a title, a dimmer word after it, and a label right-aligned
+        cv::font_size(40.0);
+        cv::fill_style(WHITE);
+        cv::fill_text("MIM", 64.0, 92.0);
+        let title = cv::measure_text("MIM");
+        cv::font_size(20.0);
+        cv::fill_style(GREY);
+        cv::fill_text("isn't M5", 64.0 + title + 16.0, 92.0);
+        let label = "4b \u{00B7} canvas";
+        cv::fill_text(label, W - 64.0 - cv::measure_text(label), 92.0);
+        cv::fill_style(0xFF30363D);
+        cv::fill_rect(64.0, 116.0, W - 128.0, 1.0);
+
+        cv::font_size(24.0);
+        cv::fill_style(WHITE);
+        cv::fill_text("Continue watching", 64.0, 190.0);
+        star(64.0 + cv::measure_text("Continue watching") + 30.0, 181.0);
+        for i in 0..TITLES.len() {
+            tile(i, poster);
+        }
+
+        // a spinner, turning with the time
+        let a = abs_time_ms as f32 * 0.004;
+        cv::stroke_style(BLUE);
+        cv::line_width(6.0);
+        cv::begin_path();
+        cv::arc(W - 100.0, 520.0, 28.0, a, a + 1.5 * PI, false);
+        cv::stroke();
+        cv::begin_path();
+        cv::arc(W - 100.0, 520.0, 10.0, 0.0, 2.0 * PI, false);
+        cv::fill_style(GREY);
+        cv::fill();
+
+        // a translucent bar along the bottom, its text centred
+        cv::fill_style(0xC0000000);
+        cv::fill_rect(0.0, H - 80.0, W, 80.0);
+        cv::font_size(22.0);
+        cv::fill_style(WHITE);
+        let hint = "Press OK to play";
+        cv::fill_text(hint, (W - cv::measure_text(hint)) / 2.0, H - 32.0);
+        Tick::Continue
+    }
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn app_shutdown() {}
+mim::app!(Home);

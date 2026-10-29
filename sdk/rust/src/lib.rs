@@ -33,6 +33,48 @@ pub enum Tick {
     Continue = 1,
 }
 
+/// An app: made by `init`, ticked once a frame, then shut down. `app!` exports it to the host
+pub trait App {
+    fn init() -> Self;
+    fn tick(&mut self, abs_time_ms: u64, dt_seconds: f32) -> Tick;
+    fn shutdown(&mut self) {}
+}
+
+/// `mim::app!(MyApp)`: exports app_init, app_tick and app_shutdown for an `App`
+#[macro_export]
+macro_rules! app {
+    ($app:ty) => {
+        const _: () = {
+            // the host calls in on one thread, one export at a time
+            static mut APP: Option<$app> = None;
+
+            fn app() -> &'static mut Option<$app> {
+                unsafe { &mut *(&raw mut APP) }
+            }
+
+            #[unsafe(no_mangle)]
+            extern "C" fn app_init() {
+                *app() = Some(<$app as $crate::App>::init());
+            }
+
+            #[unsafe(no_mangle)]
+            extern "C" fn app_tick(abs_time_ms: u64, dt_seconds: f32) -> $crate::Tick {
+                match app() {
+                    Some(app) => $crate::App::tick(app, abs_time_ms, dt_seconds),
+                    None => $crate::Tick::Quit,
+                }
+            }
+
+            #[unsafe(no_mangle)]
+            extern "C" fn app_shutdown() {
+                if let Some(app) = app() {
+                    $crate::App::shutdown(app);
+                }
+            }
+        };
+    };
+}
+
 /// Writes one line to the host's log
 pub fn log(level: Level, msg: &str) {
     // the host checks the pointer and length; a valid &str always passes

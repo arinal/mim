@@ -92,6 +92,8 @@ struct Func {
     args: Vec<Arg>,
     /// What it returns, if anything: always a number, never memory
     ret: Option<Scalar>,
+    /// `= <host fn>`: the thunk calls it directly, instead of a handler; it can't trap
+    direct: Option<String>,
 }
 
 struct Const {
@@ -102,12 +104,15 @@ struct Const {
 enum Item {
     Const(Const),
     Func(Func),
+    /// A header ffi.c includes, declaring the functions `=` names
+    Include(String),
 }
 
 #[derive(Default)]
 struct Table {
     consts: Vec<Const>,
     funcs: Vec<Func>,
+    includes: Vec<String>,
 }
 
 impl Scalar {
@@ -246,7 +251,23 @@ impl Func {
         let slots = self.values().count();
         let too_many = (slots > MAX_WASM_ARGS)
             .then(|| format!("{slots} WASM arguments, more than {MAX_WASM_ARGS}"));
-        keyword.into_iter().chain(names).chain(too_many).collect()
+        let direct = self.direct.as_ref().and_then(|d| {
+            if KEYWORDS.contains(&d.as_str()) {
+                Some(format!("`{d}` is a C, C++ or Rust keyword"))
+            } else {
+                // nothing would check where it points
+                self.args
+                    .iter()
+                    .any(|a| matches!(a.ty, Ty::Ptr))
+                    .then(|| "a `ptr` argument needs a handler to check it".to_owned())
+            }
+        });
+        keyword
+            .into_iter()
+            .chain(names)
+            .chain(too_many)
+            .chain(direct)
+            .collect()
     }
 }
 
@@ -255,6 +276,7 @@ impl Item {
         match self {
             Item::Const(c) => &c.name,
             Item::Func(f) => &f.name,
+            Item::Include(path) => path,
         }
     }
 
@@ -266,6 +288,7 @@ impl Item {
                 .then(|| format!("{} is too big for C, at most {}", c.value, i32::MAX))
                 .into_iter()
                 .collect(),
+            Item::Include(_) => vec![],
         }
     }
 }
@@ -326,7 +349,8 @@ fn constant(i: &mut &str) -> ModalResult<Const> {
     .parse_next(i)
 }
 
-// `fn <name> (<arg>, ...)`, then `-> <type>` if it returns something
+// `fn <name> (<arg>, ...)`, then `-> <type>` if it returns something, then `= <host fn>` if a host
+// function does it all
 fn func(i: &mut &str) -> ModalResult<Func> {
     seq!(Func {
         name: ident,
@@ -341,6 +365,7 @@ fn func(i: &mut &str) -> ModalResult<Func> {
             (space0, "->", space0),
             cut_err(scalar.context(expected("i32, u32, i64, u64, f32 or f64"))),
         )),
+        direct: opt(preceded((space0, '=', space0), cut_err(ident))),
     })
     .parse_next(i)
 }
@@ -349,7 +374,14 @@ fn item(i: &mut &str) -> ModalResult<Item> {
     alt((
         preceded(("const", space1), cut_err(constant)).map(Item::Const),
         preceded(("fn", space1), cut_err(func)).map(Item::Func),
-        fail.context(expected("`const` or `fn`")),
+        preceded(
+            ("include", space1),
+            cut_err(
+                take_while(1.., |c: char| !c.is_whitespace()).context(expected("a header path")),
+            ),
+        )
+        .map(|path: &str| Item::Include(path.to_owned())),
+        fail.context(expected("`const`, `fn` or `include`")),
     ))
     .parse_next(i)
 }
@@ -395,6 +427,7 @@ fn parse(text: &str) -> Result<Table, Vec<String>> {
             match it {
                 Item::Const(c) => t.consts.push(c),
                 Item::Func(f) => t.funcs.push(f),
+                Item::Include(path) => t.includes.push(path),
             }
             t
         });
@@ -442,6 +475,9 @@ fn c_enum(prefix: &str, consts: &[Const]) -> String {
 fn host_h(t: &Table) -> String {
     let consts = c_enum("guest_", &t.consts);
     let handlers = each(&t.funcs, |f| {
+        if f.direct.is_some() {
+            return String::new();
+        }
         let params: Vec<String> = std::iter::once("const guest_mem_t *const mem".to_owned())
             .chain(f.args.iter().flat_map(Arg::host_params))
             .chain(f.ret.map(|s| format!("{} *const result", s.c())))
@@ -496,12 +532,6 @@ fn host_h(t: &Table) -> String {
 
 fn thunk(f: &Func) -> String {
     let name = &f.name;
-    let args = f
-        .args
-        .iter()
-        .map(|a| format!("{}: {}", a.name, a.ty))
-        .collect::<Vec<_>>()
-        .join(", ");
     let ret = f.ret.map_or(String::new(), |s| format!(" -> {}", s.rust()));
     // wasm3 keeps the result's slot first, before the arguments
     let first = usize::from(f.ret.is_some());
@@ -531,14 +561,21 @@ fn thunk(f: &Func) -> String {
             .collect::<String>()
         })
         .collect();
+    let args: Vec<String> = f.args.iter().flat_map(Arg::host_call).collect();
     let call: Vec<String> = std::iter::once("&m".to_owned())
-        .chain(f.args.iter().flat_map(Arg::host_call))
+        .chain(args.iter().cloned())
         .chain(f.ret.map(|_| "&result".to_owned()))
         .collect();
     // a call stays on one line however many arguments it has
-    let call = match f.ret {
-        None => format!("    return host_{name}({});\n", call.join(", ")),
-        Some(s) => formatdoc! {"
+    let call = match (&f.direct, f.ret) {
+        (Some(d), None) => format!("    {d}({});\n    return NULL;\n", args.join(", ")),
+        (Some(d), Some(s)) => format!(
+            "    *({c} *)&sp[0] = {d}({});\n    return NULL;\n",
+            args.join(", "),
+            c = s.c()
+        ),
+        (None, None) => format!("    return host_{name}({});\n", call.join(", ")),
+        (None, Some(s)) => formatdoc! {"
                 {c} result = 0;
                 const char *const err = host_{name}({call});
                 if (err == NULL) {{
@@ -556,18 +593,30 @@ fn thunk(f: &Func) -> String {
     } else {
         ""
     };
+    // only handlers and `bytes` checks look at the guest's memory
+    let mem = if f.direct.is_none() || f.args.iter().any(|a| matches!(a.ty, Ty::Bytes)) {
+        "    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};\n"
+    } else {
+        "    (void)runtime;\n    (void)mem;\n"
+    };
+    let sig = f
+        .args
+        .iter()
+        .map(|a| format!("{}: {}", a.name, a.ty))
+        .collect::<Vec<_>>()
+        .join(", ");
     formatdoc! {"
 
-        // mim.{name}({args}){ret}
+        // mim.{name}({sig}){ret}
         static const void *thunk_{name}(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {{
             (void)ctx;
-        {unused_sp}    const guest_mem_t m = {{mem, m3_GetMemorySize(runtime)}};
-        {reads}{checks}{call}}}
+        {unused_sp}{mem}{reads}{checks}{call}}}
     "}
 }
 
 fn host_c(t: &Table) -> String {
     let thunks = each(&t.funcs, thunk);
+    let includes = each(&t.includes, |path| format!("#include \"{path}\"\n"));
     let table = each(&t.funcs, |f| {
         format!(
             "    {{\"{0}\", \"{1}\", thunk_{0}}},\n",
@@ -578,11 +627,12 @@ fn host_c(t: &Table) -> String {
     header()
         + &formatdoc! {"
             #include \"runtime/guest/ffi.h\"
-
+            {includes}
             #include \"wasm3.h\"
 
             // Each thunk reads its arguments from wasm3's stack, one 64-bit slot each, checks every
-            // `bytes` argument against the guest's memory, then calls the handler.
+            // `bytes` argument against the guest's memory, then calls the handler, or the host
+            // function the table names after `=`.
             {thunks}
             const guest_import_t guest_imports[] = {{
             {table}}};
@@ -621,7 +671,11 @@ fn guest_c(t: &Table) -> String {
             "__attribute__((import_module(\"mim\"), import_name(\"{}\")))",
             f.name
         );
-        c_decl(&format!("{attr} {} mim_{}", f.c_ret(), f.name), &params, ";\n")
+        c_decl(
+            &format!("{attr} {} mim_{}", f.c_ret(), f.name),
+            &params,
+            ";\n",
+        )
     });
     header()
         + &formatdoc! {"
@@ -680,7 +734,8 @@ mod tests {
         let Err(errors) = parse(
             "fn a (x: str)\nfn b (x: u32) -> ptr\nfn c (x: u32, x: u32)\nfn d (t: bytes, t_len: u32)\n\
              fn e (mem: u32)\nconst c 1\nconst k -1\nfn g (a: bytes, b: bytes, c: bytes, d: bytes, e: u32)\nwhat\n\
-             fn h (int: u32)\nfn type (a: u32)\nfn _ (a: u32)\nconst big 2147483648\nfn i (this: u32)\n",
+             fn h (int: u32)\nfn type (a: u32)\nfn _ (a: u32)\nconst big 2147483648\nfn i (this: u32)\n\
+             fn j (p: ptr) = f\nfn k () = int\ninclude\n",
         ) else {
             panic!("accepted a bad table");
         };
@@ -688,7 +743,7 @@ mod tests {
             .iter()
             .map(|e| e.split(':').nth(1).unwrap())
             .collect();
-        let expected: Vec<String> = (1..=14).map(|n| n.to_string()).collect();
+        let expected: Vec<String> = (1..=17).map(|n| n.to_string()).collect();
         assert_eq!(lines, expected, "{errors:#?}");
     }
 
@@ -704,13 +759,36 @@ mod tests {
         // a result moves the arguments up one slot, and is written only if the handler succeeds
         let t = parse("fn f (a: u32) -> u64").unwrap();
         let c = host_c(&t);
-        assert!(c.contains("a = *(const uint32_t *)&sp[1]") && c.contains("if (err == NULL) {\n        *(uint64_t *)&sp[0] = result;"));
-        assert!(host_h(&t).contains("host_f(const guest_mem_t *const mem, const uint32_t a, uint64_t *const result)"));
-        assert!(rust(&t).contains("pub fn f(a: u32) -> u64;") && guest_c(&t).contains("uint64_t mim_f(uint32_t a)"));
+        assert!(
+            c.contains("a = *(const uint32_t *)&sp[1]")
+                && c.contains("if (err == NULL) {\n        *(uint64_t *)&sp[0] = result;")
+        );
+        assert!(host_h(&t).contains(
+            "host_f(const guest_mem_t *const mem, const uint32_t a, uint64_t *const result)"
+        ));
+        assert!(
+            rust(&t).contains("pub fn f(a: u32) -> u64;")
+                && guest_c(&t).contains("uint64_t mim_f(uint32_t a)")
+        );
         // an import with no arguments still compiles without warnings
         assert!(host_c(&parse("fn f ()").unwrap()).contains("(void)sp;"));
         assert!(!c.contains("(void)sp;"));
         // and `result` is the generated code's own name
         assert!(parse("fn f (result: u32)").is_err());
+        // `=` calls the host function itself, from ffi.c, which includes its header
+        let t = parse(
+            "include a/b.h\nfn f (x: f32) = cv_f\nfn g (t: bytes) -> u32 = cv_g\nfn h () = cv_h",
+        )
+        .unwrap();
+        let c = host_c(&t);
+        assert!(c.contains("#include \"a/b.h\"\n") && c.contains("    cv_f(x);\n    return NULL;"));
+        assert!(c.contains("*(uint32_t *)&sp[0] = cv_g(m.base + t, t_len);\n    return NULL;"));
+        // without `bytes` it never looks at memory, and still compiles without warnings
+        assert!(
+            c.contains("(void)runtime;\n    (void)mem;\n    const float x")
+                && c.matches("guest_mem_t m =").count() == 1
+        );
+        assert!(c.contains("(void)sp;\n    (void)runtime;\n    (void)mem;\n    cv_h();"));
+        assert!(!host_h(&t).contains("const char *host_"));
     }
 }
