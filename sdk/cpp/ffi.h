@@ -18,8 +18,47 @@ enum {
 };
 
 __attribute__((import_module("mim"), import_name("log"))) void mim_log(uint32_t level, const void *text, uint32_t text_len);
+__attribute__((import_module("mim"), import_name("cv_save"))) void mim_cv_save();
+__attribute__((import_module("mim"), import_name("cv_restore"))) void mim_cv_restore();
+__attribute__((import_module("mim"), import_name("cv_translate"))) void mim_cv_translate(float x, float y);
+__attribute__((import_module("mim"), import_name("cv_scale"))) void mim_cv_scale(float x, float y);
 __attribute__((import_module("mim"), import_name("cv_fill_style"))) void mim_cv_fill_style(uint32_t color);
+__attribute__((import_module("mim"), import_name("cv_stroke_style"))) void mim_cv_stroke_style(uint32_t color);
+__attribute__((import_module("mim"), import_name("cv_line_width"))) void mim_cv_line_width(float width);
+__attribute__((import_module("mim"), import_name("cv_font_size"))) void mim_cv_font_size(float size);
+__attribute__((import_module("mim"), import_name("cv_clip_rect"))) void mim_cv_clip_rect(float x, float y, float width, float height);
+__attribute__((import_module("mim"), import_name("cv_begin_path"))) void mim_cv_begin_path();
+__attribute__((import_module("mim"), import_name("cv_move_to"))) void mim_cv_move_to(float x, float y);
+__attribute__((import_module("mim"), import_name("cv_line_to"))) void mim_cv_line_to(float x, float y);
+__attribute__((import_module("mim"), import_name("cv_arc"))) void mim_cv_arc(
+    float x,
+    float y,
+    float radius,
+    float start,
+    float end,
+    uint32_t counterclockwise
+);
+__attribute__((import_module("mim"), import_name("cv_rounded_rect"))) void mim_cv_rounded_rect(
+    float x,
+    float y,
+    float width,
+    float height,
+    float radius
+);
+__attribute__((import_module("mim"), import_name("cv_close_path"))) void mim_cv_close_path();
+__attribute__((import_module("mim"), import_name("cv_fill"))) void mim_cv_fill();
+__attribute__((import_module("mim"), import_name("cv_stroke"))) void mim_cv_stroke();
 __attribute__((import_module("mim"), import_name("cv_fill_rect"))) void mim_cv_fill_rect(float x, float y, float width, float height);
+__attribute__((import_module("mim"), import_name("cv_image_load"))) uint32_t mim_cv_image_load(const void *png, uint32_t png_len);
+__attribute__((import_module("mim"), import_name("cv_draw_image"))) void mim_cv_draw_image(
+    uint32_t image,
+    float x,
+    float y,
+    float width,
+    float height
+);
+__attribute__((import_module("mim"), import_name("cv_fill_text"))) void mim_cv_fill_text(const void *text, uint32_t text_len, float x, float y);
+__attribute__((import_module("mim"), import_name("cv_measure_text"))) float mim_cv_measure_text(const void *text, uint32_t text_len);
 
 #ifdef __cplusplus
 }

@@ -20,6 +20,7 @@ enum {
     budget_linear,
     budget_files,
     budget_framebuffer,
+    budget_canvas,
     budget_count,
 };
 
@@ -28,6 +29,8 @@ static const mem_budget_def_t budget_defs[budget_count] = {
     [budget_linear] = {"guest linear", 32 * 1024 * 1024, mem_kind_bump},
     [budget_files] = {"files", 4 * 1024 * 1024, mem_kind_heap},
     [budget_framebuffer] = {"framebuffer", 4 * 1024 * 1024, mem_kind_bump},
+    // the canvas's own working memory (about 5 MiB), and the images the guest loads
+    [budget_canvas] = {"canvas", 32 * 1024 * 1024, mem_kind_heap},
 };
 
 // Reads the whole file at `path` into `budget`; logs and returns NULL on failure
@@ -104,7 +107,7 @@ int main(int argc, char **argv) {
         uint32_t *const framebuffer = mem_alloc(&budgets[budget_framebuffer], fb_size, "framebuffer");
         memset(framebuffer, 0, fb_size);
         cv_context_t canvas;
-        cv_init(&canvas, framebuffer, guest_screen_width, guest_screen_height);
+        cv_init(&canvas, framebuffer, guest_screen_width, guest_screen_height, &budgets[budget_canvas]);
         cv_set_context(&canvas);
 
         pl_display_t storage;
@@ -121,7 +124,7 @@ int main(int argc, char **argv) {
         ok = guest_load(&guest, &budgets[budget_vm], &budgets[budget_linear], wasm, size)
              && run(&guest, display, framebuffer);
         guest_unload(&guest);
-        cv_set_context(NULL);
+        cv_shutdown(&canvas);
         if (display != NULL) {
             pl_display_close(display);
         }

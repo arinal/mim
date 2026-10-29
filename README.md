@@ -13,7 +13,7 @@ metal with no OS at all.
 %%{init: {"flowchart": {"wrappingWidth": 400, "subGraphTitleMargin": {"top": 10, "bottom": 10}}}}%%
 flowchart TB
     accTitle: How MIM fits together
-    accDescr: Everything except the guest apps is one executable, mim; on Linux it loads libc and libSDL3 as shared libraries. Three untrusted WASM guest apps (hello_rust, hello_cpp, bounce_rust), loaded one at a time, run inside the wasm3 interpreter. Their imports reach the runtime's guest loader, which checks every pointer and passes drawing calls to the canvas, which draws into the framebuffer. The runtime reaches the OS only through platform/pl.h. Linux implements it today; bare metal in QEMU is planned for stage 9, and Windows is not planned.
+    accDescr: Everything except the guest apps is one executable, mim; on Linux it loads libc and libSDL3 as shared libraries. Five untrusted WASM guest apps (hello_rust, hello_cpp, bounce_rust, and canvas_rust and canvas_cpp), loaded one at a time, run inside the wasm3 interpreter. Their imports reach the runtime's guest loader, which checks every pointer and passes drawing calls to the canvas, which draws into the framebuffer, using stb for PNGs and glyphs. The runtime reaches the OS only through platform/pl.h. Linux implements it today; bare metal in QEMU is planned for stage 9, and Windows is not planned.
 
     subgraph apps["<b>guest apps (.wasm)</b>: untrusted, one at a time"]
         subgraph list[" "]
@@ -21,7 +21,8 @@ flowchart TB
             hello_rust["<b>hello_rust</b><br/>logs a few lines"]
             hello_cpp["<b>hello_cpp</b><br/>the same lines, from C++"]
             bounce_rust["<b>bounce_rust</b><br/>a box bouncing in a window"]
-            hello_rust ~~~ hello_cpp ~~~ bounce_rust
+            demo["<b>canvas_rust · canvas_cpp</b><br/>a TV home screen,<br/>the same frame from each"]
+            hello_rust ~~~ hello_cpp ~~~ bounce_rust ~~~ demo
         end
         abi["<b>exports:</b> app_init · app_tick · app_shutdown<br/><b>imports:</b> mim.log · mim.cv_*, listed in sdk/mim.ffi"]
         list --- abi
@@ -34,7 +35,7 @@ flowchart TB
             direction LR
             main["<b>main.c</b><br/>the main loop"]
             loader["<b>guest/</b><br/>loads and checks the guest"]
-            canvas["<b>canvas/</b><br/>draws into the framebuffer"]
+            canvas["<b>canvas/</b><br/>draws into the framebuffer<br/><i>PNGs and glyphs: extern/stb</i>"]
             loop["<b>loop/</b><br/>the frame clock"]
             mem["<b>mem/</b><br/>memory budgets"]
             main ~~~ loader ~~~ canvas ~~~ loop ~~~ mem
@@ -72,14 +73,21 @@ not built yet.
   call back through the `mim.*` imports listed in `sdk/mim.ffi`. The host runs one at a time.
 - **`extern/wasm3`** is the WASM interpreter that runs them, vendored with a small patch
   marked MIM. It calls the exports and hands each import call to `guest/`.
+- **`extern/stb`** decodes PNGs and rasterises glyphs for the canvas, and **`extern/fonts`** is
+  the one font built into `mim` (Liberation Sans).
 - **`runtime/`** is the host:
   - `main.c`: the main loop, one `app_tick` per frame, then show it.
   - `guest/`: loads the .wasm in wasm3, checks its exports, links the imports, and turns a
     guest crash into a dead guest instead of a dead host. The import glue, `ffi.h` and `ffi.c`,
     is generated from `sdk/mim.ffi` by [`tools/ffigen`](tools/ffigen/README.md), along with
-    both SDKs' declarations; the handlers (`host_log`, `host_cv_*`) are written by hand.
-  - `canvas/`: a 2D drawing API shaped like HTML5 Canvas, in software. It owns the framebuffer,
-    and the guest's `mim.cv_*` calls draw straight into it, so no pixels cross the sandbox wall.
+    both SDKs' declarations; the handlers (`host_log` in `guest.c`, `host_cv_*` in
+    `host_cv.c`) are written by hand.
+  - `canvas/`: a 2D drawing API shaped like HTML5 Canvas, in software: paths, fills and
+    strokes with exact-area anti-aliasing, transforms, a clip, a state stack, PNG images, and
+    text from a glyph atlas. It owns the framebuffer, and the guest's `mim.cv_*` calls draw
+    straight into it, so no pixels cross the sandbox wall. A guest's bytes only ever reach
+    stb's PNG decoder, which is fuzzed; fonts never come from a guest, since stb_truetype
+    doesn't check what it reads.
   - `loop/`: the frame clock, with 60 Hz deadlines and a `dt` for each frame. It makes no OS
     calls: it's handed the time, so a test can hand it any time it likes.
   - `mem/`: one big block of memory, split into fixed budgets.
@@ -145,10 +153,10 @@ All memory is mapped once at startup, as one block, and split into named budgets
 to back in this order. Going over one fails loudly with the budget's name, instead of quietly
 eating its neighbour's memory.
 
-| guest vm | guest linear | files | framebuffer |
-|:---:|:---:|:---:|:---:|
-| 8 MiB heap | 32 MiB bump | 4 MiB heap | 4 MiB bump |
-| wasm3's own state | the guest's memory: one block that grows in place (`memory.grow`) | the `.wasm` file | 1280×720×4: what the canvas draws on |
+| guest vm | guest linear | files | framebuffer | canvas |
+|:---:|:---:|:---:|:---:|:---:|
+| 8 MiB heap | 32 MiB bump | 4 MiB heap | 4 MiB bump | 32 MiB heap |
+| wasm3's own state | the guest's memory: one block that grows in place (`memory.grow`) | the `.wasm` file | 1280×720×4: what the canvas draws on | the canvas's working memory (about 5 MiB) and the images the guest loads |
 
 ## Stages
 
@@ -167,9 +175,7 @@ flowchart LR
     S7["7 · debugging toolkit<br/>(all along)"]
 
     classDef done fill:#2da44e,stroke:#1a7f37,color:#fff
-    classDef doing fill:#fff8c5,stroke:#9a6700
-    class S0,S1,S2,S3,S4a,S4b0 done
-    class S4b doing
+    class S0,S1,S2,S3,S4a,S4b0,S4b done
 ```
 
 | | Stage | What it is | Done when |
@@ -180,7 +186,7 @@ flowchart LR
 | ✅ | **3 · WASM host** | **wasm3 runs a Rust and a C++ app. The host checks the exports and every pointer the guest hands over.** | **Both apps give the same log, and hostile apps get rejected, not crashed into.** |
 | ✅ | **4a · Main loop + window** | **A 60 Hz loop with a real `dt`, Ctrl-C and window close quit cleanly, the guest pushes 1280×720 frames into an SDL3 window (or runs headless), through `mim.present`, which the canvas replaced in 4b.** | **A fake-clock test checks every `dt` and frame, and bad `mim.present` calls trap.** |
 | ✅ | **4b.0 · FFI** | **One table, `sdk/mim.ffi`, lists every import and shared constant. A small generator writes the host's linking code and both SDKs' declarations from it, and checks guest buffers before the handler runs.** | **Editing the table without regenerating fails CI, and a handler with the wrong argument types doesn't compile.** |
-| 🚧 | 4b · Canvas | A 2D drawing API shaped like HTML5 Canvas, done in software: paths, fills, anti-aliasing, images, text from a glyph atlas. So far: the canvas owns the framebuffer, and guests draw with `mim.cv_fill_style` and `mim.cv_fill_rect`. | Golden-image tests per primitive, under 16 ms a frame. |
+| ✅ | **4b · Canvas** | **A 2D drawing API shaped like HTML5 Canvas, done in software: paths, fills and strokes with anti-aliasing, transforms, clipping, PNG images, text from a glyph atlas. A Rust and a C++ app draw the same TV home screen with it.** | **Golden-image tests for each primitive and for the whole home screen, which both apps draw pixel for pixel the same. A frame of it takes 11 ms in a debug build, 6 ms optimised.** |
 | ⬜ | 4c · App UI | A TV-style UI inside the guest: one state, actions, immediate-mode screens, D-pad focus, scrolling tile rows. Built in Rust and in C++. | A scripted "down, down, OK" replay matches a golden image. |
 | ⬜ | 4d · GPU backend | A tiny `gpu_*` interface with an OpenGL ES backend. The software canvas stays as the reference. | Both renderers draw the same scene within a tolerance. |
 | ⬜ | 5 · Input | Keyboard and gamepad events, plus an input thread feeding a lock-free ring buffer. | A multi-threaded stress test passes under TSan, plus an input replay test. |
@@ -200,6 +206,7 @@ rustup target add wasm32v1-none
 cmake --preset debug
 cmake --build build/debug
 
+./build/debug/mim build/debug/guests/canvas_rust.wasm            # a TV home screen (or canvas_cpp)
 ./build/debug/mim build/debug/guests/bounce_rust.wasm            # a box bouncing in a window
 ./build/debug/mim --headless build/debug/guests/hello_rust.wasm  # logs a few lines and quits
 
@@ -221,6 +228,8 @@ sdk/        what an app links against: sdk/rust (the mim crate) and sdk/cpp (mim
             sdk/mim.ffi, the table every import is generated from
 tools/      ffigen: writes the import glue for the host and both SDKs from sdk/mim.ffi
 guests/     sample apps, plus guests/evil: hostile ones the tests throw at the host
-tests/      one small executable per test, plus test_mim.sh for the real binary
-extern/     wasm3, vendored with a small patch marked MIM
+tests/      one small executable per test, test_mim.sh for the real binary, tests/golden: the
+            images the canvas must draw
+extern/     wasm3 and stb, each vendored with a small patch marked MIM, and the built-in font
+cmake/      embed.cmake: builds a file into a binary as a C array
 ```

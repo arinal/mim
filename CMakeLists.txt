@@ -16,7 +16,8 @@ option(MIM_FUZZ "Build fuzz_mem as a libFuzzer target (clang only)" OFF)
 add_compile_options(-Wall -Wextra -Werror -pedantic)
 
 if(MIM_SANITIZER)
-    set(san -fsanitize=${MIM_SANITIZER},undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+    # GCC's "undefined" leaves out float-cast-overflow, and guests send floats the canvas casts
+    set(san -fsanitize=${MIM_SANITIZER},undefined,float-cast-overflow -fno-sanitize-recover=all -fno-omit-frame-pointer)
     add_compile_options(${san})
     add_link_options(${san})
 endif()

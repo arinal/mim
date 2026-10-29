@@ -2,6 +2,7 @@
 
 #define _GNU_SOURCE // dup, dup2, fileno
 
+#include "golden.h"
 #include "mim_test.h"
 #include "runtime/canvas/canvas.h"
 #include "runtime/guest/guest.h"
@@ -11,9 +12,10 @@
 #include <unistd.h>
 
 static mem_t mem;
-static mem_budget_t budgets[2];
+static mem_budget_t budgets[3];
 static mem_budget_t *const vm = &budgets[0];
 static mem_budget_t *const linear = &budgets[1];
+static mem_budget_t *const canvas_budget = &budgets[2];
 
 // what the guests' mim.cv_* calls draw on
 static uint32_t framebuffer[guest_screen_width * guest_screen_height];
@@ -55,12 +57,16 @@ static char *run(
     const int saved = dup(STDERR_FILENO);
     CHECK(saved >= 0 && dup2(fileno(log), STDERR_FILENO) == STDERR_FILENO);
 
+    // a fresh canvas each time, so nothing a guest loads outlives it
+    cv_init(&canvas, framebuffer, guest_screen_width, guest_screen_height, canvas_budget);
+    cv_set_context(&canvas);
     guest_t guest;
     *loaded = guest_load(&guest, vm, linear, wasm, size);
     for (size_t i = 0; i < count; i++) {
         statuses[i] = guest_tick(&guest, frames[i].abs_time_ms, frames[i].dt_seconds);
     }
     guest_unload(&guest);
+    cv_shutdown(&canvas);
 
     fflush(stderr);
     CHECK(dup2(saved, STDERR_FILENO) == STDERR_FILENO);
@@ -70,6 +76,7 @@ static char *run(
     CHECK(mem_get_stats(vm).used_blocks == 0);
     mem_check(vm);
     CHECK(mem_get_stats(linear).used == 0);
+    CHECK(mem_get_stats(canvas_budget).used_blocks == 0);
 
     // keep "app: ..." and "guest: ...", dropping "<severity> <seconds>.<ms> "
     static char line[1024];
@@ -161,6 +168,11 @@ static void test_hostile(void) {
     expect("evil_wrong_import", false, "guest: rejected: import 'mim.log': function signature mismatch");
     expect("evil_huge_memory", false, "guest: rejected: memory allocation failed");
     expect("evil_imported_memory", false, "guest: rejected: unallocated linear memory");
+    expect("evil_cv_save_deep", false, "guest: trapped in app_init: mim.cv_save: more than 32 saves");
+    expect("evil_cv_path_full", false, "guest: trapped in app_init: mim.cv_line_to: path over 16384 points or 1024 subpaths");
+    expect("evil_cv_bad_image", false, "guest: trapped in app_init: mim.cv_draw_image: no such image");
+    expect("evil_cv_negative_arc", false, "guest: trapped in app_init: mim.cv_arc: negative radius");
+    expect("evil_cv_bad_png", false, "app: refused\nguest: trapped in app_init: mim.cv_image_load: png outside guest memory");
 
     // not a module at all, and a real one cut short
     unsigned char noise[256];
@@ -252,6 +264,35 @@ static void test_bounce(void) {
     memset(framebuffer, 0, sizeof(framebuffer));
 }
 
+// The canvas demo, in Rust and in C++: every canvas import through both SDKs, the same frame pixel
+// for pixel, and the golden one
+static void test_canvas_demo(void) {
+    static uint32_t rust_frame[guest_screen_width * guest_screen_height];
+    const char *const names[] = {"canvas_rust", "canvas_cpp"};
+    const loop_frame_t frame = {1000, 0.016f};
+    for (size_t i = 0; i < 2; i++) {
+        size_t size;
+        void *const wasm = read_guest(names[i], &size);
+        bool loaded;
+        char *const out = run(wasm, size, &loaded, &frame, 1);
+        if (!loaded || statuses[0] != guest_running) {
+            fprintf(stderr, "%s logged:\n%s\n", names[i], out);
+            CHECK(false);
+        }
+        free(out);
+        free(wasm);
+        if (i == 0) {
+            memcpy(rust_frame, framebuffer, sizeof(framebuffer));
+        } else if (memcmp(rust_frame, framebuffer, sizeof(framebuffer)) != 0) {
+            fprintf(stderr, "canvas_cpp's frame differs from canvas_rust's\n");
+            CHECK(golden_check("canvas_demo_cpp", framebuffer, guest_screen_width, guest_screen_height));
+            CHECK(false);
+        }
+    }
+    CHECK(golden_check("canvas_demo", framebuffer, guest_screen_width, guest_screen_height));
+    memset(framebuffer, 0, sizeof(framebuffer));
+}
+
 // A guest takes all of linear memory and dirties it; the next one still gets zeroed pages.
 // 8 MiB is 128 pages, minus the 17 it starts with and the block's header.
 static void test_greedy_twice(void) {
@@ -264,16 +305,16 @@ int main(void) {
     const mem_budget_def_t defs[] = {
         {"guest vm", 8 * 1024 * 1024, mem_kind_heap},
         {"guest linear", 8 * 1024 * 1024, mem_kind_bump},
+        {"canvas", 32 * 1024 * 1024, mem_kind_heap},
     };
-    CHECK(mem_init(&mem, defs, budgets, 2) == pl_result_ok);
-    cv_init(&canvas, framebuffer, guest_screen_width, guest_screen_height);
-    cv_set_context(&canvas);
+    CHECK(mem_init(&mem, defs, budgets, 3) == pl_result_ok);
 
     test_same_output();
     test_hostile();
     test_fake_clock();
     test_tick_trap();
     test_bounce();
+    test_canvas_demo();
     test_greedy_twice();
     // and a normal guest still runs after all of that
     test_same_output();

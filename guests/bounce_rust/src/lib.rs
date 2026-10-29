@@ -4,7 +4,7 @@
 
 #![no_std]
 
-use mim::{Level, SCREEN_HEIGHT as H, SCREEN_WIDTH as W, Tick, fill_rect, fill_style, log};
+use mim::{Level, SCREEN_HEIGHT as H, SCREEN_WIDTH as W, Tick, cv, log};
 
 const BOX: usize = 64;
 const TOP: usize = (H - BOX) / 2;
@@ -26,10 +26,10 @@ pub extern "C" fn app_init() {
 #[unsafe(no_mangle)]
 pub extern "C" fn app_tick(abs_time_ms: u64, _dt_seconds: f32) -> Tick {
     // the whole screen every frame: what isn't drawn over stays from the last one
-    fill_style(BLUE);
-    fill_rect(0.0, 0.0, W as f32, H as f32);
-    fill_style(WHITE);
-    fill_rect(box_x(abs_time_ms) as f32, TOP as f32, BOX as f32, BOX as f32);
+    cv::fill_style(BLUE);
+    cv::fill_rect(0.0, 0.0, W as f32, H as f32);
+    cv::fill_style(WHITE);
+    cv::fill_rect(box_x(abs_time_ms) as f32, TOP as f32, BOX as f32, BOX as f32);
     Tick::Continue
 }
 

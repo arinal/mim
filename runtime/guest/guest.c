@@ -11,7 +11,6 @@
 
 #include "runtime/guest/guest.h"
 
-#include "runtime/canvas/canvas.h"
 #include "wasm3.h"
 
 #include <stdarg.h>
@@ -30,7 +29,8 @@ static guest_t *g_guest;
 // Imports
 //===----------------------------------------------------------------------===//
 
-// The thunks in ffi.c read the arguments and check `bytes`; these do the rest
+// The thunks in ffi.c read the arguments and check `bytes`; these do the rest. The canvas's are
+// in host_cv.c.
 
 const char *host_log(const guest_mem_t *const mem, const uint32_t level, const uint8_t *const text, const uint32_t text_len) {
     (void)mem;
@@ -54,27 +54,6 @@ const char *host_log(const guest_mem_t *const mem, const uint32_t level, const u
         end += 3;
     }
     pl_log((pl_log_severity_e)level, "app: %.*s", (int)end, buf);
-    return NULL;
-}
-
-// The canvas draws on whatever cv_set_context picked; a guest can't reach any other memory
-// through it
-
-const char *host_cv_fill_style(const guest_mem_t *const mem, const uint32_t color) {
-    (void)mem;
-    cv_fill_style(color);
-    return NULL;
-}
-
-const char *host_cv_fill_rect(
-    const guest_mem_t *const mem,
-    const float x,
-    const float y,
-    const float width,
-    const float height
-) {
-    (void)mem;
-    cv_fill_rect(x, y, width, height);
     return NULL;
 }
 

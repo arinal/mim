@@ -20,10 +20,27 @@ add_custom_command(
     VERBATIM)
 set(outputs ${MIM_GUEST_DIR}/hello_cpp.wasm)
 
+# The canvas demo, with its poster built in as a C array (Rust uses include_bytes!)
+set(poster ${CMAKE_CURRENT_SOURCE_DIR}/assets/poster.png)
+set(poster_h ${CMAKE_CURRENT_BINARY_DIR}/poster_png.h)
+add_custom_command(
+    OUTPUT ${poster_h}
+    COMMAND ${CMAKE_COMMAND} -DIN=${poster} -DOUT=${poster_h} -DNAME=poster_png -P ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
+    DEPENDS ${poster} ${PROJECT_SOURCE_DIR}/cmake/embed.cmake
+    VERBATIM)
+set(canvas_sources ${cpp_sdk}/mim.cpp ${CMAKE_CURRENT_SOURCE_DIR}/canvas_cpp/canvas.cpp)
+add_custom_command(
+    OUTPUT ${MIM_GUEST_DIR}/canvas_cpp.wasm
+    COMMAND ${MIM_WASM_CLANG} -x c++ -std=c++17 -fno-exceptions -fno-rtti ${wasm_flags} -I${cpp_sdk} -I${CMAKE_CURRENT_BINARY_DIR} -o ${MIM_GUEST_DIR}/canvas_cpp.wasm ${canvas_sources}
+    DEPENDS ${canvas_sources} ${cpp_sdk}/mim.h ${cpp_sdk}/ffi.h ${poster_h}
+    VERBATIM)
+list(APPEND outputs ${MIM_GUEST_DIR}/canvas_cpp.wasm)
+
 # Hostile guests: one per case, from <case>.c and common.c
 set(evil_dir ${CMAKE_CURRENT_SOURCE_DIR}/evil)
 set(evil_cases bad_pointer wrapping_pointer log_edge huge_len bad_level log_injection log_long greedy recursion
-    missing_export wrong_signature wrong_types wrong_import unknown_import huge_memory imported_memory tick_trap)
+    missing_export wrong_signature wrong_types wrong_import unknown_import huge_memory imported_memory tick_trap
+    cv_save_deep cv_path_full cv_bad_image cv_negative_arc cv_bad_png)
 # these replace or drop common.c's exports
 set(evil_missing_export_sources missing_export.c)
 set(evil_wrong_signature_sources wrong_signature.c)
@@ -56,7 +73,8 @@ add_custom_target(guest_rust ALL
         --manifest-path ${PROJECT_SOURCE_DIR}/Cargo.toml
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cargo_dir}/wasm32v1-none/release/hello.wasm ${MIM_GUEST_DIR}/hello_rust.wasm
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cargo_dir}/wasm32v1-none/release/bounce.wasm ${MIM_GUEST_DIR}/bounce_rust.wasm
-    BYPRODUCTS ${MIM_GUEST_DIR}/hello_rust.wasm ${MIM_GUEST_DIR}/bounce_rust.wasm
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cargo_dir}/wasm32v1-none/release/canvas.wasm ${MIM_GUEST_DIR}/canvas_rust.wasm
+    BYPRODUCTS ${MIM_GUEST_DIR}/hello_rust.wasm ${MIM_GUEST_DIR}/bounce_rust.wasm ${MIM_GUEST_DIR}/canvas_rust.wasm
     VERBATIM)
 
 add_custom_target(guests ALL DEPENDS ${outputs} guest_rust)

@@ -64,14 +64,16 @@ const log_max        200
 # level: 0 debug ... 3 error
 fn log      (level: u32, text: bytes)
 
-# colour 0xAARRGGBB for the fills that follow: alpha 0xFF covers, less blends; starts opaque black
-fn cv_fill_style  (color: u32)
-fn cv_fill_rect   (x: f32, y: f32, width: f32, height: f32)
+fn cv_fill_rect    (x: f32, y: f32, width: f32, height: f32)
+# how wide cv_fill_text would draw it, before the transform
+fn cv_measure_text (text: bytes) -> f32
 ```
 
 - `const <name> <value>`: a constant both sides share. A non-negative integer that fits a C
   `int`.
-- `fn <name> (<arg>: <type>, ...)`: an import. It returns nothing (see [Not yet](#not-yet)).
+- `fn <name> (<arg>: <type>, ...)`: an import, returning nothing.
+- `fn <name> (<arg>: <type>, ...) -> <type>`: an import returning one number, any of the six
+  number types. Never `ptr` or `bytes`: the host can't hand a guest its own memory.
 
 Names are `lower_case`.
 
@@ -133,6 +135,39 @@ __attribute__((import_module("mim"), import_name("log"))) void mim_log(uint32_t 
 A generated declaration with five or more parameters (on the host, `mem` counts) goes one
 parameter per line, as clang-format keeps it. The thunk's call to the handler stays on one line.
 
+### A result
+
+For `fn cv_measure_text (text: bytes) -> f32`, the handler gets `result`, set to 0, to write into.
+wasm3 keeps the result's slot first, so the arguments start at `sp[1]`, and the thunk only writes
+the result if the handler didn't trap:
+
+```c
+// runtime/guest/ffi.h
+const char *host_cv_measure_text(const guest_mem_t *const mem, const uint8_t *const text, const uint32_t text_len, float *const result);
+```
+
+```c
+// runtime/guest/ffi.c
+static const void *thunk_cv_measure_text(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const uint32_t text = *(const uint32_t *)&sp[1];
+    const uint32_t text_len = *(const uint32_t *)&sp[2];
+    if (!guest_mem_has(&m, text, text_len)) {
+        return "mim.cv_measure_text: text outside guest memory";
+    }
+    float result = 0;
+    const char *const err = host_cv_measure_text(&m, m.base + text, text_len, &result);
+    if (err == NULL) {
+        *(float *)&sp[0] = result;
+    }
+    return err;
+}
+```
+
+The guests' declarations return it: `-> f32` in Rust, `float mim_cv_measure_text(...)` in C. Its
+wasm3 signature is `f(ii)`.
+
 Constants come out as `guest_<name>` on the host, `mim_<name>` in C and C++ guests, and
 `<NAME>: usize` in Rust.
 
@@ -163,10 +198,10 @@ Constants come out as `guest_<name>` on the host, `mim_<name>` in C and C++ gues
 
 Everything that would generate code that doesn't compile, or that the host would trip over:
 
-- syntax errors, unknown types, and `->` (return values)
+- syntax errors, unknown types, and a `->` that isn't followed by a number type
 - duplicate names, and argument names that clash: `x` twice, or `t: bytes` next to
   `t_len: u32`
-- names the generated code uses itself (`m`, `mem`, `sp`, `ctx`, `runtime`), and C, C++ and
+- names the generated code uses itself (`m`, `mem`, `sp`, `ctx`, `runtime`, `result`, `err`), and C, C++ and
   Rust keywords (`int`, `this`, `type`, `_`, ...)
 - more than 8 WASM values in one import: that's an import that wants a struct
 - a constant that doesn't fit a C `int`
@@ -196,10 +231,9 @@ Each gets added with the first import that needs it:
 
 | Missing | Needed by |
 |---|---|
-| Return values | an import that returns a count, like reading input events |
-| Buffers the host writes into | the same: the host fills a guest buffer |
+| Buffers the host writes into | reading input events: the host fills a guest buffer |
 | Structs crossing the boundary | the first import over 8 values (a rectangle is 4 `f32`s, so `cv_fill_rect` doesn't need one) |
-| Handles for host objects | images and fonts: small integers the host looks up, never addresses |
+| A type for handles to host objects | checking them in the generated code. Today an image is a plain `u32` from `cv_image_load`, which `cv_draw_image`'s handler checks itself |
 
 ## How it's built
 

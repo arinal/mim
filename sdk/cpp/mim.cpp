@@ -1,4 +1,4 @@
-//===-- mim.cpp - The C++ guest runtime: allocator and mem* functions -----===//
+//===-- mim.cpp - The C++ guest runtime: allocator, mem* and strlen -------===//
 //
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
@@ -90,5 +90,13 @@ void *memmove(void *dst, const void *src, size_t n) {
         d[n] = s[n];
     }
     return dst;
+}
+
+size_t strlen(const char *s) {
+    size_t n = 0;
+    while (s[n] != '\0') {
+        n++;
+    }
+    return n;
 }
 }

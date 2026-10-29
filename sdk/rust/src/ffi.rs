@@ -9,6 +9,26 @@ pub const LOG_MAX: usize = 200;
 #[link(wasm_import_module = "mim")]
 unsafe extern "C" {
     pub fn log(level: u32, text: *const u8, text_len: u32);
+    pub fn cv_save();
+    pub fn cv_restore();
+    pub fn cv_translate(x: f32, y: f32);
+    pub fn cv_scale(x: f32, y: f32);
     pub fn cv_fill_style(color: u32);
+    pub fn cv_stroke_style(color: u32);
+    pub fn cv_line_width(width: f32);
+    pub fn cv_font_size(size: f32);
+    pub fn cv_clip_rect(x: f32, y: f32, width: f32, height: f32);
+    pub fn cv_begin_path();
+    pub fn cv_move_to(x: f32, y: f32);
+    pub fn cv_line_to(x: f32, y: f32);
+    pub fn cv_arc(x: f32, y: f32, radius: f32, start: f32, end: f32, counterclockwise: u32);
+    pub fn cv_rounded_rect(x: f32, y: f32, width: f32, height: f32, radius: f32);
+    pub fn cv_close_path();
+    pub fn cv_fill();
+    pub fn cv_stroke();
     pub fn cv_fill_rect(x: f32, y: f32, width: f32, height: f32);
+    pub fn cv_image_load(png: *const u8, png_len: u32) -> u32;
+    pub fn cv_draw_image(image: u32, x: f32, y: f32, width: f32, height: f32);
+    pub fn cv_fill_text(text: *const u8, text_len: u32, x: f32, y: f32);
+    pub fn cv_measure_text(text: *const u8, text_len: u32) -> f32;
 }

@@ -42,9 +42,20 @@ jobs:
         # test_guest sends stderr there while a guest runs, so a crash's report is only in that file
         if: failure()
         run: cat build/${{ matrix.preset }}/tests/test_guest.log || true
+      - name: keep the frames that didn't match their golden image
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-${{ matrix.preset }}
+          path: build/${{ matrix.preset }}/tests/*.actual.png
+          if-no-files-found: ignore
       - name: fuzz the heap allocator for 60 s
         if: matrix.preset == 'fuzz'
         run: mkdir -p crashes && build/fuzz/tests/fuzz_mem -max_total_time=60 -artifact_prefix=crashes/
+      - name: fuzz PNG decoding for 60 s
+        # from a copy of the seeds: libFuzzer adds the inputs it finds to the corpus directory
+        if: matrix.preset == 'fuzz'
+        run: cp -r tests/fuzz_seeds/image corpus && build/fuzz/tests/fuzz_image corpus -max_total_time=60 -artifact_prefix=crashes/
       - name: keep the inputs that crashed it
         if: failure() && matrix.preset == 'fuzz'
         uses: actions/upload-artifact@v4

@@ -19,10 +19,10 @@ The build needs clang with the wasm32 target and `wasm-ld` (lld), and Rust with
 |---|---|---|---|
 | `debug` | default (GCC) | `-Wall -Wextra -Werror -pedantic`, strict C99 | test failures, warnings |
 | `clang` | clang | the same flags | what GCC accepts and clang doesn't (e.g. glibc's `_Generic` `strchr` under `-pedantic`) |
-| `asan` | default | AddressSanitizer + UBSan, no recovery | out-of-bounds, use-after-free, leaks, undefined behaviour; also MIM's own poisoned guard bytes |
+| `asan` | default | AddressSanitizer + UBSan (plus `float-cast-overflow`, which GCC's UBSan leaves out), no recovery | out-of-bounds, use-after-free, leaks, undefined behaviour (a guest's floats cast to integers included); also MIM's own poisoned guard bytes |
 | `tsan` | default | ThreadSanitizer + UBSan | data races, wrong memory orders |
 | `valgrind` | default | every test runs under `valgrind --leak-check=full --errors-for-leak-kinds=all` | uninitialised reads, leaks, without recompiling |
-| `fuzz` | clang `-O1` | ASan + libFuzzer; `fuzz_mem` becomes a real fuzzer | allocator bugs found by coverage-guided inputs |
+| `fuzz` | clang `-O1` | ASan + libFuzzer; `fuzz_mem` and `fuzz_image` become real fuzzers | allocator and PNG-decoding bugs found by coverage-guided inputs |
 
 Every preset is a Debug build, so `assert` is on everywhere.
 
@@ -44,8 +44,11 @@ SDL3) on every push to `main` and every pull request
 - **Guest log on failure**: `test_guest` sends stderr to `build/<preset>/tests/test_guest.log`
   while a guest runs, so a sanitizer report from inside a guest call is only there. CI prints it
   when a job fails.
-- **Fuzzing** (`fuzz` job): 60 s of `fuzz_mem` after `ctest`; crashing inputs are uploaded as the
-  `fuzz-crashes` artifact.
+- **Golden images on failure**: a frame that didn't match its golden image is written to
+  `build/<preset>/tests/<name>.actual.png`; CI uploads them as the `golden-<preset>` artifact.
+- **Fuzzing** (`fuzz` job): 60 s of `fuzz_mem`, then 60 s of `fuzz_image` from a copy of
+  `tests/fuzz_seeds/image`, after `ctest`; crashing inputs are uploaded as the `fuzz-crashes`
+  artifact.
 
 ## 2. The framework
 
@@ -74,10 +77,12 @@ There are no fixtures and no test registry: `main` calls the test functions in o
 | `test_mem_heap` | alignment, fill, split, first fit reuses a freed block, coalescing in all three orders, `largest_free` is exact, leak count at shutdown |
 | `test_mem_death` | every misuse aborts with the right message (section 4.2) |
 | `fuzz_mem` | random alloc/free/grow/reset sequences on a heap and a bump budget (section 4.3) |
-| `test_canvas` | on an 8 × 4 canvas between sentinel pixels, drawn maps compared as ASCII: the pixel-centre rule (fractional edges, a rectangle around no centre), two rectangles sharing a fractional edge fill each pixel exactly once, opaque black default, alpha blending per channel and rounding, alpha 0; NaN, ±infinity, ±1e30, `FLT_MAX` and negative sizes never write outside the canvas; drawing goes to the picked context only |
+| `fuzz_image` | PNGs, mostly broken ones, through `cv_image_load` and `cv_draw_image` on a fresh canvas each; the canvas budget must be empty after each (section 4.3) |
+| `test_canvas` | the canvas's rules, on an 8 × 4 canvas between sentinel pixels, as ASCII maps: coverage is the share of each pixel inside (fractional edges, a rectangle smaller than a pixel, negative sizes); one fill adds up its shapes (no seam where two meet, an overlap counts once, a shape the other way round cuts a hole); colour and alpha rounding; transform, save/restore, a clip narrowing a clip, 32 saves and not 33; paths (a line after `close_path`, an edge entering across the left side, strokes, arcs, the path's limits); images (1:1 and stretched, premultiplied alpha, handles that aren't images, PNGs that aren't, a PNG with an empty first `IDAT`, too wide, the 65th); text (measuring, kerning, the baseline, every kind of bad UTF-8, the atlas starting over); and every call with NaN, ±infinity, ±`FLT_MAX` and other floats in every argument |
+| `test_golden` | one scene per primitive, 320 × 180, against `tests/golden/*.png` (section 4.6): fills, arcs, rounded rectangles, strokes (widths, joins, a bevel), state (transforms, mirroring, clips), images (scaled, faded, mirrored, clipped), text (sizes, kerning, centred by its measured width, non-ASCII, scaled, clipped) |
 | `test_loop` | `dt` rules (1 ms for the first frame, for a 0 gap and for a gap over 1 s; exactly 1 s is real), the 60 Hz grid doesn't drift, an overrun re-anchors it |
 | `test_pl_display` | with SDL's `dummy` driver (no display or GPU): open a window, present two frames, a pushed `SDL_EVENT_QUIT` comes out of `pl_tick` as one `pl_event_quit`, close, open again. Not under valgrind (section 5) |
-| `test_guest` | the C++ and Rust guests log identical lines and never draw; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box, drawn with `mim.cv_*`, is at the pixel its time puts it, at both ends and on the way back; both budgets are empty after every guest |
+| `test_guest` | the C++ and Rust guests log identical lines and never draw; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box, drawn with `mim.cv_*`, is at the pixel its time puts it, at both ends and on the way back; `canvas_rust` and `canvas_cpp` draw the same 1280 × 720 frame, pixel for pixel, and it matches `tests/golden/canvas_demo.png`; every guest gets a fresh canvas, and all three budgets are empty after it |
 | `test_mim` | the `mim` binary end to end (section 4.5) |
 
 ### 3.1 Hostile guests
@@ -105,12 +110,16 @@ says otherwise. `test_guest` checks whether each one loads and what it logged.
 | `huge_memory` | asks for 64 MiB at start (link flag) | rejected: memory allocation failed |
 | `imported_memory` | imports its memory instead of defining it (link flag) | rejected |
 | `tick_trap` | traps in `app_tick` | dead from then on; `app_shutdown` is not called |
+| `cv_save_deep` | saves the canvas state 33 times | trap: more than 32 saves |
+| `cv_path_full` | a path of 16 385 points | trap: path over 16384 points or 1024 subpaths |
+| `cv_bad_image` | draws image 7, never loaded | trap: no such image |
+| `cv_negative_arc` | an arc of radius -1 | trap: negative radius |
+| `cv_bad_png` | loads a PNG signature with nothing after it, then 16 bytes from 8 before the end of memory | the first is refused (0, logged `refused`), the second traps: png outside guest memory |
 
 `test_guest` also feeds 256 bytes of noise and the first half of a real module: both rejected.
 
-The canvas imports (`mim.cv_*`) take only numbers, no pointers, so there's no hostile guest for
-them: `test_canvas` calls the canvas directly with the floats a guest could send (NaN,
-±infinity, huge and negative sizes).
+Wild floats aren't a hostile guest of their own: every float a guest sends reaches the canvas
+unchanged, so `test_canvas` calls the canvas directly with them, under UBSan in the `asan` preset.
 
 ## 4. Techniques
 
@@ -164,6 +173,23 @@ free block.
 - Without it, `main` feeds 2000 inputs of 256 bytes from a fixed-seed xorshift generator. So every
   preset, valgrind included, runs the same harness.
 
+`fuzz_image.c` is built the same two ways. It's aimed at the one place a guest's bytes reach code
+MIM didn't write: stb_image, through `cv_image_load`. Each input is decoded on a fresh canvas and,
+if it decodes, drawn; then the canvas's 8 MiB budget must be empty again, so a broken PNG may fail
+but not leak, and mem.c's guard bytes catch a write past an allocation. The budget is small on
+purpose, so a PNG that claims to be huge runs out of room instead of allocating gigabytes.
+
+- With `MIM_FUZZ`, `mim_canvas` is built with `-fsanitize=fuzzer-no-link`, so libFuzzer sees
+  stb_image's branches. `ctest` runs 10 000 inputs from nothing; CI fuzzes 60 s more, starting
+  from `tests/fuzz_seeds/image`.
+- Without it, `main` writes valid 7 × 5 PNGs with 1 to 4 channels, then 400 copies of each with
+  a few bytes changed and some cut short. stb_image doesn't check the CRCs, so these get deep
+  into the decoder.
+
+It found one bug in its first two minutes: a PNG whose first `IDAT` chunk is empty made stb_image
+call `memcpy(NULL, src, 0)`, undefined behaviour in C99. `extern/stb` carries a one-line fix
+(marked `MIM`), and `test_canvas` keeps the 82-byte PNG that shows it.
+
 ### 4.4 A fake clock
 
 `runtime/loop` takes timestamps as arguments and never reads a clock, so `test_loop` and
@@ -182,7 +208,32 @@ never opens a window and runs under valgrind too:
    place) it gets SIGINT and must exit 0. The test has a 60 s timeout, so a `mim` that ignores
    Ctrl-C fails instead of hanging.
 
+### 4.6 Golden images
+
+`tests/golden.h` compares a frame with `tests/golden/<name>.png`. Every channel of every pixel
+may be 2 off, no more: compilers and CPUs may round a float differently, which moves an
+anti-aliased edge by a step or two. On a mismatch it says how many channels were off, the worst,
+and the first pixel, and writes the frame to `<name>.actual.png` next to the test (CI keeps it as
+an artifact).
+
+`test_golden` draws one scene per primitive on a 320 × 180 canvas; `test_guest` compares the
+canvas demo's whole 1280 × 720 frame. To change a golden image on purpose:
+
+```sh
+cd build/debug/tests && MIM_UPDATE_GOLDEN=1 ./test_golden && MIM_UPDATE_GOLDEN=1 ./test_guest
+```
+
+and look at every image it rewrote before committing it: a golden image only says the output
+didn't change, not that it was right.
+
 ## 5. Sanitizer and tool notes
+
+- **Floats from a guest, and GCC's UBSan.** GCC's `-fsanitize=undefined` doesn't include
+  `float-cast-overflow`, so a float too big for the integer it's cast to passed silently. The
+  sanitizer presets add it: the canvas turns guest floats into pixel coordinates.
+- **stb's warnings.** stb's headers are a system include for the canvas and the tests, so their
+  warnings don't break `-Werror`; each file that includes an implementation also turns off
+  `-Wunused-function` for the static copy.
 
 - **Valgrind can't see inside the budgets.** All engine memory is one `mmap`, so to valgrind every
   budget is one valid block. Inside it, mem.c's guard bytes, fill patterns and `mem_check` do
@@ -212,16 +263,22 @@ never opens a window and runs under valgrind too:
 
 ### 6.1 Coverage
 
-gcov, debug build, all 18 tests:
+gcov, debug build, all 20 tests:
 
 | File | Lines | Branches taken |
 |---|---|---|
 | `platform/linux/pl_linux.c` | 97.6% | 71.3% |
 | `runtime/mem/mem.c` | 91.7% (see 5: death tests not counted) | 75.0% |
-| `runtime/guest/guest.c` | 95.6% | 76.9% |
-| `runtime/canvas/canvas.c` | 100% | 88.9% |
+| `runtime/guest/guest.c` | 95.5% | 76.9% |
+| `runtime/guest/host_cv.c` | 100% | 78.6% |
+| `runtime/canvas/canvas.c` | 98.6% | 89.4% |
+| `runtime/canvas/raster.c` | 100% | 98.9% |
+| `runtime/canvas/image.c` | 97.1% | 91.7% |
+| `runtime/canvas/text.c` | 98.4% | 91.4% |
 | `runtime/loop/loop.c` | 100% | 83.3% |
 | `runtime/main.c` | 74.6% | 61.9% |
+
+stb's own code isn't counted.
 
 To reproduce:
 
@@ -266,9 +323,30 @@ Still surviving:
 | `SA_RESETHAND` dropped (a second Ctrl-C no longer kills a stuck guest) | needs a guest stuck inside a frame |
 | leaks don't change `mim`'s exit code | needs a guest that makes wasm3 leak |
 
-The canvas, measured on its own with `test_canvas` and `test_guest`: 7 of 7 killed. The mutants
-were: the pixel-centre offset dropped, NaN not caught, no clamp to the canvas, no rounding in the
-blend, no blending, the top byte written, and a transparent default fill.
+The canvas, measured on its own with `test_canvas`, `test_golden`, `test_guest` and
+`fuzz_image`: 12 of 12 killed, after one more test. The mutants: the one-pixel case of a line off
+by one, no cut where a line leaves the canvas on the left, the winding left of the clip ignored,
+coverage not clamped to 1, corners never mitred, an anticlockwise full circle lost, a clip that
+widens, a 33rd save, an image handle past the table, a restore below the bottom, text drawn
+without kerning, and overlong UTF-8 and surrogates accepted. The left-edge cut first survived:
+no test had a slanted edge crossing the canvas's left side, so `test_canvas` got one.
+
+### 6.3 Frame time
+
+`tests/bench_frame <app.wasm>` (built, not run by `ctest`) times `app_tick` over 300 frames:
+wasm3, every import and all the drawing, without the window or the 60 Hz wait. On the dev
+machine (load around 2, so the slowest frame is noisy):
+
+| Guest | Debug build (`-O0`) | `-O2` |
+|---|---|---|
+| `canvas_rust`: the home screen, every primitive | 11.1 ms (first frame 13.7, rasterising every glyph) | 5.6 ms |
+| `canvas_cpp`: the same frame | 12.0 ms | 5.7 ms |
+| `bounce_rust`: a full-screen fill and a box | 2.5 ms | 1.0 ms |
+
+A frame is 16.7 ms. What made the difference, found with callgrind: in strict ISO C mode
+`fminf` and `fmaxf` are calls into libm, 16% of the time in the per-pixel loops, now
+comparisons; a pixel inside a shape reuses its neighbour's coverage, so an opaque fill is a
+store; images are sampled with integer weights, two channels at a time.
 
 ## 7. Adding a test
 
@@ -281,4 +359,7 @@ blend, no blending, the top byte written, and a transparent default fill.
   `test_hostile` in `tests/test_guest.c`.
 - **A misuse that must abort:** a `static void` case in `tests/test_mem_death.c` and an
   `expect_death(case, death_abort, "message")` line in its `main`.
+- **A golden image:** draw it in a scene in `tests/test_golden.c` (or `golden_check` it from
+  any test that includes `golden.h`), run with `MIM_UPDATE_GOLDEN=1`, look at the PNG, and commit
+  it.
 - **Prove it can fail:** break the code it guards and watch the test go red before relying on it.

@@ -30,8 +30,46 @@ static inline bool guest_mem_has(const guest_mem_t *const mem, const uint32_t pt
 
 // Written by hand. Each returns NULL, or a message that traps the guest. `bytes` arguments
 // are already checked and arrive as host pointers; `ptr` arguments are guest addresses.
+// An import that returns a value gets `result`, set to 0, to write it into.
 const char *host_log(const guest_mem_t *const mem, const uint32_t level, const uint8_t *const text, const uint32_t text_len);
+const char *host_cv_save(const guest_mem_t *const mem);
+const char *host_cv_restore(const guest_mem_t *const mem);
+const char *host_cv_translate(const guest_mem_t *const mem, const float x, const float y);
+const char *host_cv_scale(const guest_mem_t *const mem, const float x, const float y);
 const char *host_cv_fill_style(const guest_mem_t *const mem, const uint32_t color);
+const char *host_cv_stroke_style(const guest_mem_t *const mem, const uint32_t color);
+const char *host_cv_line_width(const guest_mem_t *const mem, const float width);
+const char *host_cv_font_size(const guest_mem_t *const mem, const float size);
+const char *host_cv_clip_rect(
+    const guest_mem_t *const mem,
+    const float x,
+    const float y,
+    const float width,
+    const float height
+);
+const char *host_cv_begin_path(const guest_mem_t *const mem);
+const char *host_cv_move_to(const guest_mem_t *const mem, const float x, const float y);
+const char *host_cv_line_to(const guest_mem_t *const mem, const float x, const float y);
+const char *host_cv_arc(
+    const guest_mem_t *const mem,
+    const float x,
+    const float y,
+    const float radius,
+    const float start,
+    const float end,
+    const uint32_t counterclockwise
+);
+const char *host_cv_rounded_rect(
+    const guest_mem_t *const mem,
+    const float x,
+    const float y,
+    const float width,
+    const float height,
+    const float radius
+);
+const char *host_cv_close_path(const guest_mem_t *const mem);
+const char *host_cv_fill(const guest_mem_t *const mem);
+const char *host_cv_stroke(const guest_mem_t *const mem);
 const char *host_cv_fill_rect(
     const guest_mem_t *const mem,
     const float x,
@@ -39,6 +77,23 @@ const char *host_cv_fill_rect(
     const float width,
     const float height
 );
+const char *host_cv_image_load(const guest_mem_t *const mem, const uint8_t *const png, const uint32_t png_len, uint32_t *const result);
+const char *host_cv_draw_image(
+    const guest_mem_t *const mem,
+    const uint32_t image,
+    const float x,
+    const float y,
+    const float width,
+    const float height
+);
+const char *host_cv_fill_text(
+    const guest_mem_t *const mem,
+    const uint8_t *const text,
+    const uint32_t text_len,
+    const float x,
+    const float y
+);
+const char *host_cv_measure_text(const guest_mem_t *const mem, const uint8_t *const text, const uint32_t text_len, float *const result);
 
 struct M3Runtime;
 struct M3ImportContext;

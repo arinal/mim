@@ -21,12 +21,156 @@ static const void *thunk_log(IM3Runtime runtime, IM3ImportContext ctx, uint64_t 
     return host_log(&m, level, m.base + text, text_len);
 }
 
+// mim.cv_save()
+static const void *thunk_cv_save(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    (void)sp;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    return host_cv_save(&m);
+}
+
+// mim.cv_restore()
+static const void *thunk_cv_restore(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    (void)sp;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    return host_cv_restore(&m);
+}
+
+// mim.cv_translate(x: f32, y: f32)
+static const void *thunk_cv_translate(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    return host_cv_translate(&m, x, y);
+}
+
+// mim.cv_scale(x: f32, y: f32)
+static const void *thunk_cv_scale(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    return host_cv_scale(&m, x, y);
+}
+
 // mim.cv_fill_style(color: u32)
 static const void *thunk_cv_fill_style(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
     (void)ctx;
     const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
     const uint32_t color = *(const uint32_t *)&sp[0];
     return host_cv_fill_style(&m, color);
+}
+
+// mim.cv_stroke_style(color: u32)
+static const void *thunk_cv_stroke_style(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const uint32_t color = *(const uint32_t *)&sp[0];
+    return host_cv_stroke_style(&m, color);
+}
+
+// mim.cv_line_width(width: f32)
+static const void *thunk_cv_line_width(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float width = *(const float *)&sp[0];
+    return host_cv_line_width(&m, width);
+}
+
+// mim.cv_font_size(size: f32)
+static const void *thunk_cv_font_size(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float size = *(const float *)&sp[0];
+    return host_cv_font_size(&m, size);
+}
+
+// mim.cv_clip_rect(x: f32, y: f32, width: f32, height: f32)
+static const void *thunk_cv_clip_rect(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    const float width = *(const float *)&sp[2];
+    const float height = *(const float *)&sp[3];
+    return host_cv_clip_rect(&m, x, y, width, height);
+}
+
+// mim.cv_begin_path()
+static const void *thunk_cv_begin_path(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    (void)sp;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    return host_cv_begin_path(&m);
+}
+
+// mim.cv_move_to(x: f32, y: f32)
+static const void *thunk_cv_move_to(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    return host_cv_move_to(&m, x, y);
+}
+
+// mim.cv_line_to(x: f32, y: f32)
+static const void *thunk_cv_line_to(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    return host_cv_line_to(&m, x, y);
+}
+
+// mim.cv_arc(x: f32, y: f32, radius: f32, start: f32, end: f32, counterclockwise: u32)
+static const void *thunk_cv_arc(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    const float radius = *(const float *)&sp[2];
+    const float start = *(const float *)&sp[3];
+    const float end = *(const float *)&sp[4];
+    const uint32_t counterclockwise = *(const uint32_t *)&sp[5];
+    return host_cv_arc(&m, x, y, radius, start, end, counterclockwise);
+}
+
+// mim.cv_rounded_rect(x: f32, y: f32, width: f32, height: f32, radius: f32)
+static const void *thunk_cv_rounded_rect(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const float x = *(const float *)&sp[0];
+    const float y = *(const float *)&sp[1];
+    const float width = *(const float *)&sp[2];
+    const float height = *(const float *)&sp[3];
+    const float radius = *(const float *)&sp[4];
+    return host_cv_rounded_rect(&m, x, y, width, height, radius);
+}
+
+// mim.cv_close_path()
+static const void *thunk_cv_close_path(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    (void)sp;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    return host_cv_close_path(&m);
+}
+
+// mim.cv_fill()
+static const void *thunk_cv_fill(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    (void)sp;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    return host_cv_fill(&m);
+}
+
+// mim.cv_stroke()
+static const void *thunk_cv_stroke(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    (void)sp;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    return host_cv_stroke(&m);
 }
 
 // mim.cv_fill_rect(x: f32, y: f32, width: f32, height: f32)
@@ -40,9 +184,89 @@ static const void *thunk_cv_fill_rect(IM3Runtime runtime, IM3ImportContext ctx, 
     return host_cv_fill_rect(&m, x, y, width, height);
 }
 
+// mim.cv_image_load(png: bytes) -> u32
+static const void *thunk_cv_image_load(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const uint32_t png = *(const uint32_t *)&sp[1];
+    const uint32_t png_len = *(const uint32_t *)&sp[2];
+    if (!guest_mem_has(&m, png, png_len)) {
+        return "mim.cv_image_load: png outside guest memory";
+    }
+    uint32_t result = 0;
+    const char *const err = host_cv_image_load(&m, m.base + png, png_len, &result);
+    if (err == NULL) {
+        *(uint32_t *)&sp[0] = result;
+    }
+    return err;
+}
+
+// mim.cv_draw_image(image: u32, x: f32, y: f32, width: f32, height: f32)
+static const void *thunk_cv_draw_image(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const uint32_t image = *(const uint32_t *)&sp[0];
+    const float x = *(const float *)&sp[1];
+    const float y = *(const float *)&sp[2];
+    const float width = *(const float *)&sp[3];
+    const float height = *(const float *)&sp[4];
+    return host_cv_draw_image(&m, image, x, y, width, height);
+}
+
+// mim.cv_fill_text(text: bytes, x: f32, y: f32)
+static const void *thunk_cv_fill_text(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const uint32_t text = *(const uint32_t *)&sp[0];
+    const uint32_t text_len = *(const uint32_t *)&sp[1];
+    const float x = *(const float *)&sp[2];
+    const float y = *(const float *)&sp[3];
+    if (!guest_mem_has(&m, text, text_len)) {
+        return "mim.cv_fill_text: text outside guest memory";
+    }
+    return host_cv_fill_text(&m, m.base + text, text_len, x, y);
+}
+
+// mim.cv_measure_text(text: bytes) -> f32
+static const void *thunk_cv_measure_text(IM3Runtime runtime, IM3ImportContext ctx, uint64_t *sp, void *mem) {
+    (void)ctx;
+    const guest_mem_t m = {mem, m3_GetMemorySize(runtime)};
+    const uint32_t text = *(const uint32_t *)&sp[1];
+    const uint32_t text_len = *(const uint32_t *)&sp[2];
+    if (!guest_mem_has(&m, text, text_len)) {
+        return "mim.cv_measure_text: text outside guest memory";
+    }
+    float result = 0;
+    const char *const err = host_cv_measure_text(&m, m.base + text, text_len, &result);
+    if (err == NULL) {
+        *(float *)&sp[0] = result;
+    }
+    return err;
+}
+
 const guest_import_t guest_imports[] = {
     {"log", "v(iii)", thunk_log},
+    {"cv_save", "v()", thunk_cv_save},
+    {"cv_restore", "v()", thunk_cv_restore},
+    {"cv_translate", "v(ff)", thunk_cv_translate},
+    {"cv_scale", "v(ff)", thunk_cv_scale},
     {"cv_fill_style", "v(i)", thunk_cv_fill_style},
+    {"cv_stroke_style", "v(i)", thunk_cv_stroke_style},
+    {"cv_line_width", "v(f)", thunk_cv_line_width},
+    {"cv_font_size", "v(f)", thunk_cv_font_size},
+    {"cv_clip_rect", "v(ffff)", thunk_cv_clip_rect},
+    {"cv_begin_path", "v()", thunk_cv_begin_path},
+    {"cv_move_to", "v(ff)", thunk_cv_move_to},
+    {"cv_line_to", "v(ff)", thunk_cv_line_to},
+    {"cv_arc", "v(fffffi)", thunk_cv_arc},
+    {"cv_rounded_rect", "v(fffff)", thunk_cv_rounded_rect},
+    {"cv_close_path", "v()", thunk_cv_close_path},
+    {"cv_fill", "v()", thunk_cv_fill},
+    {"cv_stroke", "v()", thunk_cv_stroke},
     {"cv_fill_rect", "v(ffff)", thunk_cv_fill_rect},
+    {"cv_image_load", "i(ii)", thunk_cv_image_load},
+    {"cv_draw_image", "v(iffff)", thunk_cv_draw_image},
+    {"cv_fill_text", "v(iiff)", thunk_cv_fill_text},
+    {"cv_measure_text", "f(ii)", thunk_cv_measure_text},
 };
 const size_t guest_import_count = sizeof(guest_imports) / sizeof(guest_imports[0]);

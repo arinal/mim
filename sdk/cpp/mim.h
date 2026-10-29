@@ -1,10 +1,10 @@
-//===-- mim.h - The C++ guest SDK: host imports and a log line builder ----===//
+//===-- mim.h - The C++ guest SDK: log, the canvas, a log line builder ----===//
 //
 // SPDX-License-Identifier: MIT OR GPL-2.0-only
 //
 // For guests built with clang --target=wasm32 -nostdlib: no libc, no
 // exceptions, no RTTI. mim.cpp provides operator new/delete and the
-// memset/memcpy/memmove that clang emits calls to.
+// memset/memcpy/memmove/strlen that clang emits calls to.
 //
 //===----------------------------------------------------------------------===//
 
@@ -74,15 +74,134 @@ inline void log(Level level, const char *msg) {
     (Line() << msg).send(level);
 }
 
-/// Sets the colour of the fills that follow: 0xAARRGGBB, alpha 0xFF covers, less blends.
-/// It starts opaque black.
+/// The canvas: 2D drawing shaped like HTML5's. What's drawn shows when app_tick returns, and stays
+/// until it's drawn over. Coordinates are pixels from the top left, before the transform. Colours
+/// are 0xAARRGGBB: alpha 0xFF covers, less blends. Hitting a limit (more than 32 saves, a path
+/// over 16384 points, a negative arc radius) makes the host stop the app.
+namespace cv {
+
+/// Pushes the state: the transform, the styles, the line width, the font size and the clip
+inline void save() {
+    mim_cv_save();
+}
+
+/// Pops the state; does nothing if nothing was saved
+inline void restore() {
+    mim_cv_restore();
+}
+
+inline void translate(float x, float y) {
+    mim_cv_translate(x, y);
+}
+
+/// Text and line widths scale by sqrt(|x × y|)
+inline void scale(float x, float y) {
+    mim_cv_scale(x, y);
+}
+
+/// The colour of the fills and text that follow; it starts opaque black
 inline void fill_style(uint32_t color) {
     mim_cv_fill_style(color);
 }
 
-/// Fills a rectangle on the screen, in pixels from the top left. It shows when app_tick returns.
+/// The colour of the strokes that follow; it starts opaque black
+inline void stroke_style(uint32_t color) {
+    mim_cv_stroke_style(color);
+}
+
+/// It starts at 1; 0 or less is ignored
+inline void line_width(float width) {
+    mim_cv_line_width(width);
+}
+
+/// The font's em square; it starts at 10, and 0 or less is ignored
+inline void font_size(float size) {
+    mim_cv_font_size(size);
+}
+
+/// Narrows the clip to the rectangle, in whole pixels; only restore() widens it again
+inline void clip_rect(float x, float y, float width, float height) {
+    mim_cv_clip_rect(x, y, width, height);
+}
+
+inline void begin_path() {
+    mim_cv_begin_path();
+}
+
+inline void move_to(float x, float y) {
+    mim_cv_move_to(x, y);
+}
+
+inline void line_to(float x, float y) {
+    mim_cv_line_to(x, y);
+}
+
+/// An arc of the circle at (x, y), angles in radians, clockwise on screen unless
+/// `counterclockwise`; a line joins it to the current point
+inline void arc(float x, float y, float radius, float start, float end, bool counterclockwise = false) {
+    mim_cv_arc(x, y, radius, start, end, counterclockwise ? 1 : 0);
+}
+
+/// A closed subpath; the radius is at most half the shorter side
+inline void rounded_rect(float x, float y, float width, float height, float radius) {
+    mim_cv_rounded_rect(x, y, width, height, radius);
+}
+
+inline void close_path() {
+    mim_cv_close_path();
+}
+
+/// Fills the path by the non-zero winding rule
+inline void fill() {
+    mim_cv_fill();
+}
+
+/// Strokes the path: butt ends, mitred corners
+inline void stroke() {
+    mim_cv_stroke();
+}
+
+/// Fills a rectangle, leaving the path as it is
 inline void fill_rect(float x, float y, float width, float height) {
     mim_cv_fill_rect(x, y, width, height);
 }
+
+/// An image the host decoded and keeps
+class Image {
+public:
+    /// No image yet: not ok(). constexpr, so a global one needs no constructor run.
+    constexpr Image() : handle_(0) {}
+
+    /// Decodes a PNG, up to 4096 × 4096; check ok(): it fails if the host can't decode it, or has 64 already
+    static Image load(const void *png, uint32_t size) {
+        return Image(mim_cv_image_load(png, size));
+    }
+
+    bool ok() const {
+        return handle_ != 0;
+    }
+
+    /// Draws it scaled into the rectangle, smoothed; the image must be ok()
+    void draw(float x, float y, float width, float height) const {
+        mim_cv_draw_image(handle_, x, y, width, height);
+    }
+
+private:
+    explicit Image(uint32_t handle) : handle_(handle) {}
+    uint32_t handle_;
+};
+
+/// Draws UTF-8 text in the built-in font (Liberation Sans, Latin) on its baseline at (x, y)
+inline void fill_text(const char *text, float x, float y) {
+    // a literal's length is worked out when compiling; anything else calls mim.cpp's strlen
+    mim_cv_fill_text(text, uint32_t(__builtin_strlen(text)), x, y);
+}
+
+/// How wide fill_text would draw it, before the transform
+inline float measure_text(const char *text) {
+    return mim_cv_measure_text(text, uint32_t(__builtin_strlen(text)));
+}
+
+} // namespace cv
 
 } // namespace mim
