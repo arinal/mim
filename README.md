@@ -1,11 +1,16 @@
 # MIM
 
 **MIM Isn't M5.** A small media-app runtime, built from scratch one stage at a time to learn how
-these things really work.
+these things really work. M5 is the native runtime behind
+[Disney's Application Development Kit (ADK)](https://medium.com/disney-streaming/introducing-the-disney-application-development-kit-adk-ad85ca139073).
 
-A C99 host runs apps compiled to WebAssembly (written in Rust or C++) in a 60 FPS loop. Every
-OS-specific call goes through a thin platform layer, so the same host should one day boot on bare
-metal with no OS at all.
+A C99 host runs apps compiled to WebAssembly (Rust or C++) at 60 FPS, behind a thin platform
+layer that should one day boot on bare metal.
+
+![A TV home screen: a header, a row of five poster tiles with one focused, a spinner and a hint bar](tests/golden/canvas_demo.png)
+
+<sub>`canvas_rust` in the window: every pixel drawn by MIM's own software canvas, and
+`canvas_cpp` draws the same frame.</sub>
 
 ## How it fits together
 
@@ -63,45 +68,8 @@ flowchart TB
     style list fill:none,stroke:none
 ```
 
-Everything in the big box is one executable, `mim`: `runtime/`, wasm3 and the platform layer
-are static libraries linked into it. Only the guest apps (read at run time) and, on Linux, libc
-and SDL3 (shared libraries) are outside it. Thick arrows cross a wall. Dashed boxes are planned,
-not built yet.
-
-- **The guest apps** are Rust or C++ compiled to WASM with `sdk/rust` or `sdk/cpp`, and the
-  host doesn't trust them. They all have the same exports, which the host calls, and can only
-  call back through the `mim.*` imports listed in `sdk/mim.ffi`. The host runs one at a time.
-- **`extern/wasm3`** is the WASM interpreter that runs them, vendored with a small patch
-  marked MIM. It calls the exports and hands each import call to `guest/`.
-- **`extern/stb`** decodes PNGs and rasterises glyphs for the canvas, and **`extern/fonts`** is
-  the one font built into `mim` (Liberation Sans).
-- **`runtime/`** is the host:
-  - `main.c`: the main loop, one `app_tick` per frame, then show it.
-  - `guest/`: loads the .wasm in wasm3, checks its exports, links the imports, and turns a
-    guest crash into a dead guest instead of a dead host. The import glue, `ffi.h` and `ffi.c`,
-    is generated from `sdk/mim.ffi` by [`tools/ffigen`](tools/ffigen/README.md), along with
-    both SDKs' declarations; the handlers (`host_log` in `guest.c`, `host_cv_*` in
-    `host_cv.c`) are written by hand.
-  - `canvas/`: a 2D drawing API shaped like HTML5 Canvas, in software: paths, fills and
-    strokes with exact-area anti-aliasing, transforms, a clip, a state stack, PNG images, and
-    text from a glyph atlas. It owns the framebuffer, and the guest's `mim.cv_*` calls draw
-    straight into it, so no pixels cross the sandbox wall. A guest's bytes only ever reach
-    stb's PNG decoder, which is fuzzed; fonts never come from a guest, since stb_truetype
-    doesn't check what it reads.
-  - `loop/`: the frame clock, with 60 Hz deadlines and a `dt` for each frame. It makes no OS
-    calls: it's handed the time, so a test can hand it any time it likes.
-  - `mem/`: one big block of memory, split into fixed budgets.
-- **`platform/pl.h`** is the whole OS interface. Nothing above it touches the OS.
-- **`platform/<target>/`** implements it, one per target:
-  - `linux/` is the only one so far: `pl_linux.c` does log, time, sleep, files, memory,
-    threads, atomics, events and Ctrl-C; `pl_display_sdl.c` is the window (SDL3).
-  - `baremetal/` is stage 9: the same apps on QEMU's aarch64 `virt` board, with no OS.
-  - `windows/` isn't planned. It's there to show that a port is only a new `pl.h`
-    implementation.
-
-CI checks the walls: nothing outside `platform/` may include an OS header (`unistd.h`,
-`pthread.h`, `SDL3/…`), and a set of hostile guests in `guests/cpp/evil/` try to break out of the
-sandbox.
+One executable, `mim`; only the guests, libc and SDL3 live outside it. Thick arrows cross a
+wall, dashed boxes are planned. Hostile guests in `guests/cpp/evil/` test the sandbox in CI.
 
 ### One frame
 
@@ -145,13 +113,11 @@ sequenceDiagram
     end
 ```
 
-The frame rate comes from the deadline, not vsync: on Wayland vsync doesn't behave like a clock.
+The 60 Hz deadline paces frames, not vsync.
 
 ### Memory
 
-All memory is mapped once at startup, as one block, and split into named budgets that sit back
-to back in this order. Going over one fails loudly with the budget's name, instead of quietly
-eating its neighbour's memory.
+One block, mapped at startup and split into named budgets. Going over one fails loudly.
 
 | guest vm | guest linear | files | framebuffer | canvas |
 |:---:|:---:|:---:|:---:|:---:|
