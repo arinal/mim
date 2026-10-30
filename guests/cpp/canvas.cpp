@@ -31,8 +31,10 @@ const char *const TITLES[TILES] = {"Mountains", "Sunset", "Ridge", "Dusk", "Peak
 constexpr float WATCHED[TILES] = {0.8f, 0.35f, 0.6f, 0.1f, 0.95f};
 // the star badge's points, alternating 18 and 7.5 from its centre
 constexpr float STAR[20] = {
+    // clang-format off
     0.000f, -18.000f, 4.408f, -6.068f, 17.119f, -5.562f, 7.133f, 2.318f, 10.580f, 14.562f, 0.000f, 7.500f,
     -10.580f, 14.562f, -7.133f, 2.318f, -17.119f, -5.562f, -4.408f, -6.068f,
+    // clang-format on
 };
 
 constexpr uint32_t BACKGROUND = 0xFF0E1117;
@@ -164,5 +166,6 @@ int32_t app_tick(uint64_t abs_time_ms, float dt_seconds) {
     return int32_t(mim::Tick::keep_going);
 }
 
-void app_shutdown() {}
+void app_shutdown() {
+}
 }

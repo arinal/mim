@@ -2,14 +2,13 @@
 
 // One scene per canvas primitive, compared with tests/golden/<name>.png (golden.h says how)
 
+#include "golden.h"
 #include "mim_test.h"
 #include "runtime/canvas/canvas.h"
 
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
-
-#include "golden.h"
 
 enum {
     w = 320,

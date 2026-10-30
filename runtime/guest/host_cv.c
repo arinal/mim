@@ -74,4 +74,3 @@ const char *host_cv_draw_image(
     (void)mem;
     return cv_draw_image(image, x, y, width, height) ? NULL : "mim.cv_draw_image: no such image";
 }
-
