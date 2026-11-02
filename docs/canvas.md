@@ -12,7 +12,7 @@ This document explains it in three steps, each building on the last:
    examples.
 
 Each concept comes with a small example. The figures were drawn from the algorithm's own numbers,
-and `tests/test_canvas.c` (`test_doc_examples`) checks that the real canvas produces the pixels
+and `src/tests/test_canvas.c` (`test_doc_examples`) checks that the real canvas produces the pixels
 the examples show.
 
 ---
@@ -566,11 +566,11 @@ A mask is "coverage, already computed".
 
 | To understand | Read |
 |---|---|
-| The public API and its limits | `runtime/canvas/canvas.h` |
-| What the files share: the state, the path types, the implementation record | `runtime/canvas/canvas_impl.h` |
-| State, path building, curve flattening, strokes | `runtime/canvas/canvas.c` |
-| Edge accumulation (`cv_raster_line`, `line_inside`), the sweep (`cv_raster_paint`), blending, images, masks | `runtime/canvas/raster.c` |
-| Text, the glyph atlas | `runtime/canvas/text.c` |
-| PNG decoding | `runtime/canvas/image.c` |
-| How a guest call arrives | `sdk/mim.ffi` (the table), `runtime/guest/ffi.c` (generated), `runtime/guest/host_cv.c` (the calls that can trap) |
-| What the rules look like as tests | `tests/test_canvas.c` (rules on a tiny canvas; `test_doc_examples` holds this document's examples), `tests/test_golden.c` (whole frames against stored images) |
+| The public API and its limits | `src/mim/runtime/canvas/canvas.h` |
+| What the files share: the state, the path types, the implementation record | `src/mim/runtime/canvas/canvas_impl.h` |
+| State, path building, curve flattening, strokes | `src/mim/runtime/canvas/canvas.c` |
+| Edge accumulation (`cv_raster_line`, `line_inside`), the sweep (`cv_raster_paint`), blending, images, masks | `src/mim/runtime/canvas/raster.c` |
+| Text, the glyph atlas | `src/mim/runtime/canvas/text.c` |
+| PNG decoding | `src/mim/runtime/canvas/image.c` |
+| How a guest call arrives | `src/mim/sdk/mim.ffi` (the table), `src/mim/runtime/guest/ffi.c` (generated), `src/mim/runtime/guest/host_cv.c` (the calls that can trap) |
+| What the rules look like as tests | `src/tests/test_canvas.c` (rules on a tiny canvas; `test_doc_examples` holds this document's examples), `src/tests/test_golden.c` (whole frames against stored images) |

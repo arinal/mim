@@ -14,7 +14,7 @@
 <line x1="430.0" y1="206.0" x2="430.0" y2="246.0" stroke="#1f2933" stroke-width="2" marker-end="url(#aInk)"/>
 <text x="444.0" y="228.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">cv_fill_rect(...)</text>
 <rect x="20.0" y="246.0" width="820.0" height="236.0" fill="#f7fafc" fill-opacity="1.0" stroke="#2f6fb5" stroke-width="2"/>
-<text x="36.0" y="268.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">Canvas  (runtime/canvas)</text>
+<text x="36.0" y="268.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">Canvas  (src/mim/runtime/canvas)</text>
 <rect x="40.0" y="284.0" width="220.0" height="180.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#2f6fb5" stroke-width="1.5"/>
 <text x="52.0" y="306.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">Front end</text>
 <text x="52.0" y="328.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">canvas.c</text>

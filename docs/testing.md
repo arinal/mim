@@ -33,12 +33,12 @@ SDL3) on every push to `main` and every pull request
 (`fail-fast: false`, so one red job doesn't hide another). On top of `ctest`:
 
 - **Format** (`debug` job): `clang-format --dry-run -Werror` over every tracked `.c`, `.h`, `.cpp`
-  outside `extern/`.
-- **Generated imports** (`debug` job): runs `tools/ffigen`'s tests, regenerates the import glue
-  from `sdk/mim.ffi`, and fails if `git diff` shows any change, i.e. someone edited the table
+  outside `src/extern/`.
+- **Generated imports** (`debug` job): runs `src/tools/ffigen`'s tests, regenerates the import glue
+  from `src/mim/sdk/mim.ffi`, and fails if `git diff` shows any change, i.e. someone edited the table
   without regenerating, or edited a generated file by hand.
 - **Platform boundary** (`debug` job): fails if `pthread.h`, `unistd.h`, `fcntl.h`, `time.h`,
-  `sys/*` or `SDL3/*` is included anywhere except `platform/`, `tests/` and `extern/`.
+  `sys/*` or `SDL3/*` is included anywhere except `src/mim/platform/`, `src/tests/` and `src/extern/`.
 - **TSan memory layout** (`tsan` job): `sysctl vm.mmap_rnd_bits=28`. Older TSan runtimes abort with
   "unexpected memory mapping" when the kernel uses 32 bits of mmap randomisation.
 - **Guest log on failure**: `test_guest` sends stderr to `build/<preset>/tests/test_guest.log`
@@ -47,14 +47,14 @@ SDL3) on every push to `main` and every pull request
 - **Golden images on failure**: a frame that didn't match its golden image is written to
   `build/<preset>/tests/<name>.actual.png`; CI uploads them as the `golden-<preset>` artifact.
 - **Fuzzing** (`fuzz` job): 60 s of `fuzz_mem`, then 60 s of `fuzz_image` from a copy of
-  `tests/fuzz_seeds/image`, after `ctest`; crashing inputs are uploaded as the `fuzz-crashes`
+  `src/tests/fuzz_seeds/image`, after `ctest`; crashing inputs are uploaded as the `fuzz-crashes`
   artifact.
 
 ## 2. The framework
 
-`tests/mim_test.h` is the whole framework: one `CHECK(cond)` macro that prints
+`src/tests/mim_test.h` is the whole framework: one `CHECK(cond)` macro that prints
 `file:line: CHECK failed: cond` and exits with 1. Each test is its own executable
-(`mim_add_test(name)` in `tests/CMakeLists.txt` builds `name.c` and links `mim_mem`, which brings
+(`mim_add_test(name)` in `src/tests/CMakeLists.txt` builds `name.c` and links `mim_mem`, which brings
 the platform layer), so the first failing check fails that test and nothing else. Under the
 `valgrind` preset, `mim_add_test` puts `valgrind` in front of the command (`run_under`).
 
@@ -79,16 +79,16 @@ There are no fixtures and no test registry: `main` calls the test functions in o
 | `fuzz_mem` | random alloc/free/grow/reset sequences on a heap and a bump budget (section 4.3) |
 | `fuzz_image` | PNGs, mostly broken ones, through `cv_image_load` and `cv_draw_image` on a fresh canvas each; the canvas budget must be empty after each (section 4.3) |
 | `test_canvas` | the canvas's rules, on an 8 × 4 canvas between sentinel pixels, as ASCII maps: coverage is the share of each pixel inside (fractional edges, a rectangle smaller than a pixel, negative sizes); one fill adds up its shapes (no seam where two meet, an overlap counts once, a shape the other way round cuts a hole); colour and alpha rounding; transform, save/restore, a clip narrowing a clip, 32 saves and not 33; paths (a line after `close_path`, an edge entering across the left side, strokes, arcs, the path's limits); images (1:1 and stretched, premultiplied alpha, handles that aren't images, PNGs that aren't, a PNG with an empty first `IDAT`, too wide, the 65th); text (measuring, kerning, the baseline, every kind of bad UTF-8, the atlas starting over); and every call with NaN, ±infinity, ±`FLT_MAX` and other floats in every argument |
-| `test_golden` | one scene per primitive, 320 × 180, against `tests/golden/*.png` (section 4.6): fills, arcs, rounded rectangles, strokes (widths, joins, a bevel), state (transforms, mirroring, clips), images (scaled, faded, mirrored, clipped), text (sizes, kerning, centred by its measured width, non-ASCII, scaled, clipped) |
+| `test_golden` | one scene per primitive, 320 × 180, against `src/tests/golden/*.png` (section 4.6): fills, arcs, rounded rectangles, strokes (widths, joins, a bevel), state (transforms, mirroring, clips), images (scaled, faded, mirrored, clipped), text (sizes, kerning, centred by its measured width, non-ASCII, scaled, clipped) |
 | `test_loop` | `dt` rules (1 ms for the first frame, for a 0 gap and for a gap over 1 s; exactly 1 s is real), the 60 Hz grid doesn't drift, an overrun re-anchors it |
 | `test_pl_display` | with SDL's `dummy` driver (no display or GPU): open a window, present two frames, a pushed `SDL_EVENT_QUIT` comes out of `pl_tick` as one `pl_event_quit`, close, open again; pushed key events come out as `pl_event_key` in order, without the OS's repeats or keys a remote doesn't have, and keys beyond the buffer are dropped while the quit and the time still fit. Not under valgrind (section 5) |
-| `test_guest` | the C++ and Rust guests log identical lines and never draw; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box, drawn with `mim.cv_*`, is at the pixel its time puts it, at both ends and on the way back; `canvas_rust` and `canvas_cpp` draw the same 1280 × 720 frame, pixel for pixel, and it matches `tests/golden/canvas_demo.png`; a scripted key replay through `ui_rust` and `ui_cpp` (section 4.7); every guest gets a fresh canvas, and all three budgets are empty after it |
+| `test_guest` | the C++ and Rust guests log identical lines and never draw; every hostile guest (section 3.1); garbage and truncated modules; a fake clock through `loop_begin`; `bounce_rust`'s box, drawn with `mim.cv_*`, is at the pixel its time puts it, at both ends and on the way back; `canvas_rust` and `canvas_cpp` draw the same 1280 × 720 frame, pixel for pixel, and it matches `src/tests/golden/canvas_demo.png`; a scripted key replay through `ui_rust` and `ui_cpp` (section 4.7); every guest gets a fresh canvas, and all three budgets are empty after it |
 | `test_mim` | the `mim` binary end to end (section 4.5) |
 
 ### 3.1 Hostile guests
 
-`guests/cpp/evil/` holds one WASM module per attack. Each is `<case>.c` plus `common.c` (the normal
-`app_tick` and `app_shutdown`, and the `memset` clang emits calls to), unless `guests/CMakeLists.txt`
+`src/guests/cpp/evil/` holds one WASM module per attack. Each is `<case>.c` plus `common.c` (the normal
+`app_tick` and `app_shutdown`, and the `memset` clang emits calls to), unless `src/guests/CMakeLists.txt`
 says otherwise. `test_guest` checks whether each one loads and what it logged.
 
 | Guest | Does | Expected |
@@ -183,24 +183,24 @@ purpose, so a PNG that claims to be huge runs out of room instead of allocating 
 
 - With `MIM_FUZZ`, `mim_canvas` is built with `-fsanitize=fuzzer-no-link`, so libFuzzer sees
   stb_image's branches. `ctest` runs 10 000 inputs from nothing; CI fuzzes 60 s more, starting
-  from `tests/fuzz_seeds/image`.
+  from `src/tests/fuzz_seeds/image`.
 - Without it, `main` writes valid 7 × 5 PNGs with 1 to 4 channels, then 400 copies of each with
   a few bytes changed and some cut short. stb_image doesn't check the CRCs, so these get deep
   into the decoder.
 
 It found one bug in its first two minutes: a PNG whose first `IDAT` chunk is empty made stb_image
-call `memcpy(NULL, src, 0)`, undefined behaviour in C99. `extern/stb` carries a one-line fix
+call `memcpy(NULL, src, 0)`, undefined behaviour in C99. `src/extern/stb` carries a one-line fix
 (marked `MIM`), and `test_canvas` keeps the 82-byte PNG that shows it.
 
 ### 4.4 A fake clock
 
-`runtime/loop` takes timestamps as arguments and never reads a clock, so `test_loop` and
+`src/mim/runtime/loop` takes timestamps as arguments and never reads a clock, so `test_loop` and
 `test_guest`'s `test_fake_clock` feed it any times they like (including a 5 s "debugger pause")
 and check the `abs_time_ms` and `dt` the guests receive.
 
 ### 4.5 The binary end to end
 
-`tests/test_mim.sh <guest dir> <command...>` runs the real `mim`, always with `--headless`, so it
+`src/tests/test_mim.sh <guest dir> <command...>` runs the real `mim`, always with `--headless`, so it
 never opens a window and runs under valgrind too:
 
 1. `hello_rust` exits 0, logs `bye after 3 ticks`, and takes at least 33 ms (3 frames at 60 Hz):
@@ -212,7 +212,7 @@ never opens a window and runs under valgrind too:
 
 ### 4.6 Golden images
 
-`tests/golden.h` compares a frame with `tests/golden/<name>.png`. Every channel of every pixel
+`src/tests/golden.h` compares a frame with `src/tests/golden/<name>.png`. Every channel of every pixel
 may be 2 off, no more: compilers and CPUs may round a float differently, which moves an
 anti-aliased edge by a step or two. On a mismatch it says how many channels were off, the worst,
 and the first pixel, and writes the frame to `<name>.actual.png` next to the test (CI keeps it as
@@ -269,7 +269,7 @@ only. An `after_frame` hook copies the frame buffer at the frames worth keeping.
   errors. So `test_pl_display`, the only test that starts SDL, isn't built in the `valgrind`
   preset; `asan` and `tsan` run it. `test_mim` passes `--headless`, so `mim` never starts SDL.
 - **libdbus under TSan.** `SDL_Init` and `SDL_Quit` go through libdbus, which takes two of its own
-  locks in opposite orders; TSan reports a potential deadlock. `tests/tsan.supp` suppresses
+  locks in opposite orders; TSan reports a potential deadlock. `src/tests/tsan.supp` suppresses
   deadlock reports from `libdbus-1.so`, for `test_pl_display` only.
 - **`(strstr)` and `(strchr)`.** Recent glibc defines them as `_Generic` macros, which clang
   `-pedantic` rejects in C99 mode. The parentheses call the real function.
@@ -285,16 +285,16 @@ gcov, debug build, all 20 tests:
 
 | File | Lines | Branches taken |
 |---|---|---|
-| `platform/posix/pl_posix.c` | 97.6% | 71.3% |
-| `runtime/mem/mem.c` | 91.7% (see 5: death tests not counted) | 75.0% |
-| `runtime/guest/guest.c` | 95.5% | 76.9% |
-| `runtime/guest/host_cv.c` | 100% | 78.6% |
-| `runtime/canvas/canvas.c` | 98.6% | 89.4% |
-| `runtime/canvas/raster.c` | 100% | 98.9% |
-| `runtime/canvas/image.c` | 97.1% | 91.7% |
-| `runtime/canvas/text.c` | 98.4% | 91.4% |
-| `runtime/loop/loop.c` | 100% | 83.3% |
-| `runtime/main.c` | 74.6% | 61.9% |
+| `src/mim/platform/posix/pl_posix.c` | 97.6% | 71.3% |
+| `src/mim/runtime/mem/mem.c` | 91.7% (see 5: death tests not counted) | 75.0% |
+| `src/mim/runtime/guest/guest.c` | 95.5% | 76.9% |
+| `src/mim/runtime/guest/host_cv.c` | 100% | 78.6% |
+| `src/mim/runtime/canvas/canvas.c` | 98.6% | 89.4% |
+| `src/mim/runtime/canvas/raster.c` | 100% | 98.9% |
+| `src/mim/runtime/canvas/image.c` | 97.1% | 91.7% |
+| `src/mim/runtime/canvas/text.c` | 98.4% | 91.4% |
+| `src/mim/runtime/loop/loop.c` | 100% | 83.3% |
+| `src/mim/runtime/main.c` | 74.6% | 61.9% |
 
 stb's own code isn't counted.
 
@@ -304,7 +304,7 @@ To reproduce:
 cmake -S . -B /tmp/mim-cov -G Ninja -DCMAKE_BUILD_TYPE=Debug \
       -DCMAKE_C_FLAGS=--coverage -DCMAKE_EXE_LINKER_FLAGS=--coverage
 cmake --build /tmp/mim-cov && ctest --test-dir /tmp/mim-cov
-cd /tmp/mim-cov && gcov -b -o runtime/mem/CMakeFiles/mim_mem.dir runtime/mem/CMakeFiles/mim_mem.dir/mem.c.o
+cd /tmp/mim-cov && gcov -b -o src/mim/runtime/mem/CMakeFiles/mim_mem.dir src/mim/runtime/mem/CMakeFiles/mim_mem.dir/mem.c.o
 ```
 
 The lines never run are almost all environment failures (`pthread_create` failing, `EINTR`,
@@ -351,7 +351,7 @@ no test had a slanted edge crossing the canvas's left side, so `test_canvas` got
 
 ### 6.3 Frame time
 
-`tests/bench_frame <app.wasm>` (built, not run by `ctest`) times `app_tick` over 300 frames:
+`src/tests/bench_frame <app.wasm>` (built, not run by `ctest`) times `app_tick` over 300 frames:
 wasm3, every import and all the drawing, without the window or the 60 Hz wait. On the dev
 machine (load around 2, so the slowest frame is noisy):
 
@@ -370,16 +370,16 @@ store; images are sampled with integer weights, two channels at a time.
 
 ## 7. Adding a test
 
-- **A C test:** write `tests/test_<name>.c` with a `main` that uses `CHECK`, add
-  `mim_add_test(test_<name>)` to `tests/CMakeLists.txt`, and link anything beyond `mim_mem`
+- **A C test:** write `src/tests/test_<name>.c` with a `main` that uses `CHECK`, add
+  `mim_add_test(test_<name>)` to `src/tests/CMakeLists.txt`, and link anything beyond `mim_mem`
   with `target_link_libraries`. It then runs under every preset, valgrind included.
-- **A hostile guest:** write `guests/cpp/evil/<case>.c` including `evil.h`, add `<case>` to
-  `evil_cases` in `guests/CMakeLists.txt` (set `evil_<case>_sources` or `evil_<case>_flags` if it
+- **A hostile guest:** write `src/guests/cpp/evil/<case>.c` including `evil.h`, add `<case>` to
+  `evil_cases` in `src/guests/CMakeLists.txt` (set `evil_<case>_sources` or `evil_<case>_flags` if it
   must not use `common.c` or needs link flags), and add an `expect("evil_<case>", ...)` line to
-  `test_hostile` in `tests/test_guest.c`.
-- **A misuse that must abort:** a `static void` case in `tests/test_mem_death.c` and an
+  `test_hostile` in `src/tests/test_guest.c`.
+- **A misuse that must abort:** a `static void` case in `src/tests/test_mem_death.c` and an
   `expect_death(case, death_abort, "message")` line in its `main`.
-- **A golden image:** draw it in a scene in `tests/test_golden.c` (or `golden_check` it from
+- **A golden image:** draw it in a scene in `src/tests/test_golden.c` (or `golden_check` it from
   any test that includes `golden.h`), run with `MIM_UPDATE_GOLDEN=1`, look at the PNG, and commit
   it.
 - **Prove it can fail:** break the code it guards and watch the test go red before relying on it.
