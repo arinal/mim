@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="640" viewBox="0 0 900 640">
+<defs><marker id="aDown" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9730d"/></marker><marker id="aUp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f8b8d"/></marker><marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2933"/></marker><marker id="aMute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="450.0" y="28.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="17" fill="#1f2933" text-anchor="middle" font-weight="bold" font-style="normal">The fill pipeline, and the data each step touches</text>
+<rect x="90.0" y="70.0" width="420.0" height="54.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#2f6fb5" stroke-width="1.5"/>
+<text x="104.0" y="94.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">1  transform</text>
+<text x="104.0" y="113.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">each point to device space</text>
+<rect x="90.0" y="154.0" width="420.0" height="54.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#2f6fb5" stroke-width="1.5"/>
+<text x="104.0" y="178.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">2  flatten</text>
+<text x="104.0" y="197.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">curves become short lines</text>
+<rect x="90.0" y="238.0" width="420.0" height="54.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#2f6fb5" stroke-width="1.5"/>
+<text x="104.0" y="262.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">3  stroke</text>
+<text x="104.0" y="281.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">segments and corners become polygons</text>
+<rect x="90.0" y="322.0" width="420.0" height="54.0" fill="#fde5cc" fill-opacity="1.0" stroke="#d9730d" stroke-width="1.5"/>
+<text x="104.0" y="346.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" fill="#d9730d" text-anchor="start" font-weight="bold" font-style="normal">4  accumulate</text>
+<text x="104.0" y="365.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">polygon edges write notes into cells</text>
+<rect x="90.0" y="406.0" width="420.0" height="54.0" fill="#fde5cc" fill-opacity="1.0" stroke="#d9730d" stroke-width="1.5"/>
+<text x="104.0" y="430.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" fill="#d9730d" text-anchor="start" font-weight="bold" font-style="normal">5  sweep</text>
+<text x="104.0" y="449.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">per row: running sum -> coverage -> alpha</text>
+<rect x="90.0" y="490.0" width="420.0" height="54.0" fill="#fde5cc" fill-opacity="1.0" stroke="#d9730d" stroke-width="1.5"/>
+<text x="104.0" y="514.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" fill="#d9730d" text-anchor="start" font-weight="bold" font-style="normal">6  blend</text>
+<text x="104.0" y="533.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">alpha 255: store.  1..254: mix with the old pixel</text>
+<line x1="300.0" y1="124.0" x2="300.0" y2="152.0" stroke="#1f2933" stroke-width="2" marker-end="url(#aInk)"/>
+<line x1="300.0" y1="208.0" x2="300.0" y2="236.0" stroke="#1f2933" stroke-width="2" marker-end="url(#aInk)"/>
+<line x1="300.0" y1="292.0" x2="300.0" y2="320.0" stroke="#1f2933" stroke-width="2" marker-end="url(#aInk)"/>
+<line x1="300.0" y1="376.0" x2="300.0" y2="404.0" stroke="#1f2933" stroke-width="2" marker-end="url(#aInk)"/>
+<line x1="300.0" y1="460.0" x2="300.0" y2="488.0" stroke="#1f2933" stroke-width="2" marker-end="url(#aInk)"/>
+<text x="310.0" y="312.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">polygons</text>
+<rect x="44.0" y="70.0" width="8.0" height="222.0" fill="#2f6fb5" fill-opacity="1.0" stroke="none" stroke-width="1"/>
+<rect x="44.0" y="322.0" width="8.0" height="222.0" fill="#d9730d" fill-opacity="1.0" stroke="none" stroke-width="1"/>
+<text transform="translate(34 181) rotate(-90)" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#2f6fb5" text-anchor="middle" font-weight="bold">front end (canvas.c)</text>
+<text transform="translate(34 433) rotate(-90)" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#d9730d" text-anchor="middle" font-weight="bold">rasteriser (raster.c)</text>
+<rect x="650.0" y="66.0" width="230.0" height="146.0" fill="#eef4fb" fill-opacity="1.0" stroke="#2f6fb5" stroke-width="2"/>
+<text x="662.0" y="88.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">points[ ] + subpaths[ ]</text>
+<text x="662.0" y="106.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">the current path, device space</text>
+<text x="662.0" y="122.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">steps 1 and 2 append to it</text>
+<rect x="650.0" y="234.0" width="230.0" height="62.0" fill="#eef4fb" fill-opacity="1.0" stroke="#2f6fb5" stroke-width="2"/>
+<text x="662.0" y="256.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#2f6fb5" text-anchor="start" font-weight="bold" font-style="normal">scratch[ ]</text>
+<text x="662.0" y="274.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">one subpath without repeats</text>
+<rect x="650.0" y="318.0" width="230.0" height="146.0" fill="#fff6ec" fill-opacity="1.0" stroke="#d9730d" stroke-width="2"/>
+<text x="662.0" y="340.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#d9730d" text-anchor="start" font-weight="bold" font-style="normal">cells[ ]  +  dirty rect</text>
+<text x="662.0" y="358.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">(width + 2) x height floats</text>
+<text x="662.0" y="374.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">zero before and after each fill</text>
+<rect x="650.0" y="486.0" width="230.0" height="62.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="2"/>
+<text x="662.0" y="508.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">pixels[ ]</text>
+<text x="662.0" y="526.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">the framebuffer</text>
+<line x1="510.0" y1="97.0" x2="650.0" y2="97.0" stroke="#2f6fb5" stroke-width="2" marker-end="url(#aInk)"/>
+<line x1="510.0" y1="181.0" x2="650.0" y2="181.0" stroke="#2f6fb5" stroke-width="2" marker-end="url(#aInk)"/>
+<line x1="650.0" y1="253.0" x2="510.0" y2="253.0" stroke="#2f6fb5" stroke-width="2" marker-end="url(#aInk)"/>
+<text x="580.0" y="247.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">reads</text>
+<line x1="510.0" y1="273.0" x2="650.0" y2="273.0" stroke="#2f6fb5" stroke-width="2" marker-end="url(#aInk)"/>
+<text x="580.0" y="289.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">uses</text>
+<line x1="510.0" y1="349.0" x2="650.0" y2="349.0" stroke="#d9730d" stroke-width="2" marker-end="url(#aInk)"/>
+<text x="580.0" y="343.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">adds</text>
+<line x1="650.0" y1="433.0" x2="510.0" y2="433.0" stroke="#d9730d" stroke-width="2" marker-end="url(#aInk)"/>
+<text x="580.0" y="427.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">reads and clears</text>
+<line x1="510.0" y1="517.0" x2="650.0" y2="517.0" stroke="#d9730d" stroke-width="2" marker-end="url(#aInk)"/>
+<text x="580.0" y="511.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">writes</text>
+<text x="450.0" y="584.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">fill_rect, images and text skip the path: they enter at step 4 (fill_rect), or go straight to pixels (images, text masks).</text>
+</svg>

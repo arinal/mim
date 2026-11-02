@@ -182,6 +182,74 @@ static void test_nonzero(void) {
            "########\n");
 }
 
+// The worked examples of docs/canvas.md; if one of these changes, the document is out of date
+static void test_doc_examples(void) {
+    // B: edges inside a pixel split their area between two cells
+    reset();
+    cv_fill_rect(1.5f, 1, 2, 1);
+    CHECK(pixel(1, 1) == over(white, 128) && pixel(2, 1) == white && pixel(3, 1) == over(white, 128));
+    CHECK(pixel(4, 1) == bg && pixel(2, 0) == bg && pixel(2, 2) == bg);
+
+    // C: a slanted edge, one note per row
+    reset();
+    cv_begin_path();
+    cv_move_to(1, 0);
+    cv_line_to(3, 2);
+    cv_line_to(1, 2);
+    cv_fill();
+    CHECK(pixel(1, 0) == over(white, 128) && pixel(2, 0) == bg);
+    CHECK(pixel(1, 1) == white && pixel(2, 1) == over(white, 128) && pixel(3, 1) == bg);
+
+    // D: a shape starting off the left of the canvas still starts the winding
+    reset();
+    cv_fill_rect(-3, 0, 5, 1);
+    expect(__LINE__,
+           "##......\n"
+           "........\n"
+           "........\n"
+           "........\n");
+
+    // E: two overlapping rectangles in one fill: winding 2 in the overlap is still just covered
+    reset();
+    cv_begin_path();
+    cv_move_to(0, 0);
+    cv_line_to(4, 0);
+    cv_line_to(4, 1);
+    cv_line_to(0, 1);
+    cv_close_path();
+    cv_move_to(2, 0);
+    cv_line_to(5, 0);
+    cv_line_to(5, 1);
+    cv_line_to(2, 1);
+    cv_close_path();
+    cv_fill();
+    expect(__LINE__,
+           "#####...\n"
+           "........\n"
+           "........\n"
+           "........\n");
+
+    // E2: the second rectangle the other way round: winding 0 where they overlap, a hole
+    reset();
+    cv_begin_path();
+    cv_move_to(0, 0);
+    cv_line_to(4, 0);
+    cv_line_to(4, 1);
+    cv_line_to(0, 1);
+    cv_close_path();
+    cv_move_to(2, 0);
+    cv_line_to(2, 1);
+    cv_line_to(5, 1);
+    cv_line_to(5, 0);
+    cv_close_path();
+    cv_fill();
+    expect(__LINE__,
+           "##..#...\n"
+           "........\n"
+           "........\n"
+           "........\n");
+}
+
 static void test_colour(void) {
     // the fill starts opaque black, and the top byte is never written
     reset();
@@ -568,6 +636,7 @@ int main(void) {
     CHECK(mem_init(&mem, &def, &budget, 1) == pl_result_ok);
     test_coverage();
     test_nonzero();
+    test_doc_examples();
     test_colour();
     test_state();
     test_paths();

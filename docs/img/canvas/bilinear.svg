@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="330" viewBox="0 0 620 330">
+<defs><marker id="aDown" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9730d"/></marker><marker id="aUp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f8b8d"/></marker><marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2933"/></marker><marker id="aMute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="310.0" y="28.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" fill="#1f2933" text-anchor="middle" font-weight="bold" font-style="normal">Image sampling: a 100×100 poster drawn into 50×50</text>
+<rect x="90.0" y="70.0" width="64.0" height="64.0" fill="#2f6fb5" fill-opacity="0.22" stroke="#c4ccd4" stroke-width="1"/>
+<text x="122.0" y="106.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (0,0)</text>
+<rect x="154.0" y="70.0" width="64.0" height="64.0" fill="#2f6fb5" fill-opacity="0.22" stroke="#c4ccd4" stroke-width="1"/>
+<text x="186.0" y="106.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (1,0)</text>
+<rect x="218.0" y="70.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="250.0" y="106.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (2,0)</text>
+<rect x="282.0" y="70.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="314.0" y="106.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (3,0)</text>
+<rect x="90.0" y="134.0" width="64.0" height="64.0" fill="#2f6fb5" fill-opacity="0.22" stroke="#c4ccd4" stroke-width="1"/>
+<text x="122.0" y="170.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (0,1)</text>
+<rect x="154.0" y="134.0" width="64.0" height="64.0" fill="#2f6fb5" fill-opacity="0.22" stroke="#c4ccd4" stroke-width="1"/>
+<text x="186.0" y="170.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (1,1)</text>
+<rect x="218.0" y="134.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="250.0" y="170.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (2,1)</text>
+<rect x="282.0" y="134.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="314.0" y="170.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (3,1)</text>
+<rect x="90.0" y="198.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="122.0" y="234.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (0,2)</text>
+<rect x="154.0" y="198.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="186.0" y="234.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (1,2)</text>
+<rect x="218.0" y="198.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="250.0" y="234.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (2,2)</text>
+<rect x="282.0" y="198.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="314.0" y="234.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (3,2)</text>
+<rect x="90.0" y="262.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="122.0" y="298.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (0,3)</text>
+<rect x="154.0" y="262.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="186.0" y="298.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (1,3)</text>
+<rect x="218.0" y="262.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="250.0" y="298.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (2,3)</text>
+<rect x="282.0" y="262.0" width="64.0" height="64.0" fill="#ffffff" fill-opacity="1" stroke="#c4ccd4" stroke-width="1"/>
+<text x="314.0" y="298.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">src (3,3)</text>
+<circle cx="154.0" cy="134.0" r="6" fill="#d9730d" stroke="#ffffff" stroke-width="2"/>
+<text x="166.0" y="124.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#d9730d" text-anchor="start" font-weight="bold" font-style="normal">(1.0, 1.0)</text>
+<text x="390.0" y="82.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">destination pixel (0, 0)</text>
+<text x="390.0" y="104.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">centre = (0.5, 0.5)</text>
+<text x="390.0" y="126.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">scale   = 100 / 50 = 2</text>
+<text x="390.0" y="148.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#d9730d" text-anchor="start" font-weight="bold" font-style="normal">-> source position (1.0, 1.0)</text>
+<text x="390.0" y="170.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal"></text>
+<text x="390.0" y="192.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">that is the shared corner of</text>
+<text x="390.0" y="214.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">four source pixels, so the colour</text>
+<text x="390.0" y="236.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">is the average of those four</text>
+<text x="390.0" y="258.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="normal" font-style="normal">(25% each)  =  bilinear.</text>
+<text x="310.0" y="360.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">raster.c  cv_raster_image:  between() subtracts 0.5 (pixel centres), then mix() twice</text>
+</svg>

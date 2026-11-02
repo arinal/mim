@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+<defs><marker id="aDown" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9730d"/></marker><marker id="aUp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f8b8d"/></marker><marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2933"/></marker><marker id="aMute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="480.0" y="28.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="17" fill="#1f2933" text-anchor="middle" font-weight="bold" font-style="normal">Text: the glyph atlas (illustrative, not to scale)</text>
+<rect x="40.0" y="70.0" width="360.0" height="360.0" fill="#ffffff" fill-opacity="1.0" stroke="#1f2933" stroke-width="2"/>
+<text x="220.0" y="60.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">atlas: 1024 x 1024 bytes of coverage</text>
+<rect x="42.0" y="72.0" width="40.0" height="56.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="62.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">H</text>
+<rect x="85.0" y="72.0" width="34.0" height="56.0" fill="#fde5cc" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="102.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">e</text>
+<rect x="122.0" y="72.0" width="16.0" height="56.0" fill="#e3f3e8" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="130.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">l</text>
+<rect x="141.0" y="72.0" width="16.0" height="56.0" fill="#fff3c4" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="149.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">l</text>
+<rect x="160.0" y="72.0" width="36.0" height="56.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="178.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">o</text>
+<rect x="199.0" y="72.0" width="52.0" height="56.0" fill="#fde5cc" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="225.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">W</text>
+<rect x="254.0" y="72.0" width="22.0" height="56.0" fill="#e3f3e8" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="265.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">r</text>
+<rect x="279.0" y="72.0" width="36.0" height="56.0" fill="#fff3c4" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="297.0" y="105.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">d</text>
+<line x1="40.0" y1="129.0" x2="400.0" y2="129.0" stroke="#c4ccd4" stroke-width="1" stroke-dasharray="3 3"/>
+<rect x="42.0" y="130.0" width="22.0" height="38.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="53.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">e</text>
+<rect x="67.0" y="130.0" width="14.0" height="38.0" fill="#fde5cc" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="74.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">t</text>
+<rect x="84.0" y="130.0" width="22.0" height="38.0" fill="#e3f3e8" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="95.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">a</text>
+<rect x="109.0" y="130.0" width="24.0" height="38.0" fill="#fff3c4" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="121.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">n</text>
+<rect x="136.0" y="130.0" width="12.0" height="38.0" fill="#dbe8f6" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="142.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">i</text>
+<rect x="151.0" y="130.0" width="20.0" height="38.0" fill="#fde5cc" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="161.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">s</text>
+<rect x="174.0" y="130.0" width="24.0" height="38.0" fill="#e3f3e8" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="186.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">0</text>
+<rect x="201.0" y="130.0" width="18.0" height="38.0" fill="#fff3c4" fill-opacity="1.0" stroke="#c4ccd4" stroke-width="1"/>
+<text x="210.0" y="154.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="middle" font-weight="normal" font-style="normal">1</text>
+<line x1="40.0" y1="169.0" x2="400.0" y2="169.0" stroke="#c4ccd4" stroke-width="1" stroke-dasharray="3 3"/>
+<circle cx="48.0" cy="178.0" r="5" fill="#c0392b" stroke="none" stroke-width="1"/>
+<text x="60.0" y="183.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#c0392b" text-anchor="start" font-weight="normal" font-style="normal">next glyph goes here: (shelf_x, shelf_y)</text>
+<text x="40.0" y="452.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">glyphs are packed left to right on a shelf; a shelf is as tall</text>
+<text x="40.0" y="470.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">as its tallest glyph. When one doesn't fit, a new shelf starts</text>
+<text x="40.0" y="488.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">below (1 px gap, so smoothing never reads a neighbour).</text>
+<text x="40.0" y="506.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">A full atlas is emptied and starts over.</text>
+<text x="720.0" y="60.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">glyph table: 4096 slots, hashed on (glyph, size)</text>
+<rect x="520.0" y="70.0" width="44.0" height="36.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="542.0" y="93.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">0</text>
+<rect x="564.0" y="70.0" width="356.0" height="36.0" fill="#ffffff" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="574.0" y="93.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#c4ccd4" text-anchor="start" font-weight="normal" font-style="normal">empty</text>
+<rect x="520.0" y="114.0" width="44.0" height="36.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="542.0" y="137.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">1</text>
+<rect x="564.0" y="114.0" width="356.0" height="36.0" fill="#fff3c4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="574.0" y="129.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">key: glyph 'e', size 80</text>
+<text x="574.0" y="144.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">x=2 y=60 w=22 h=38 left=1 top=-26</text>
+<rect x="520.0" y="158.0" width="44.0" height="36.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="542.0" y="181.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">2</text>
+<rect x="564.0" y="158.0" width="356.0" height="36.0" fill="#ffffff" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="574.0" y="181.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#c4ccd4" text-anchor="start" font-weight="normal" font-style="normal">empty</text>
+<rect x="520.0" y="202.0" width="44.0" height="36.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="542.0" y="225.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">3</text>
+<rect x="564.0" y="202.0" width="356.0" height="36.0" fill="#fff3c4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="574.0" y="217.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">key: glyph 'H', size 80</text>
+<text x="574.0" y="232.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">x=2 y=2 w=40 h=56 left=2 top=-37</text>
+<rect x="520.0" y="246.0" width="44.0" height="36.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="542.0" y="269.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">4</text>
+<rect x="564.0" y="246.0" width="356.0" height="36.0" fill="#ffffff" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="574.0" y="269.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#c4ccd4" text-anchor="start" font-weight="normal" font-style="normal">empty</text>
+<rect x="520.0" y="290.0" width="44.0" height="36.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="542.0" y="313.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">5</text>
+<rect x="564.0" y="290.0" width="356.0" height="36.0" fill="#fff3c4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="574.0" y="305.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">key: glyph 'l', size 120</text>
+<text x="574.0" y="320.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">x=...</text>
+<rect x="520.0" y="334.0" width="44.0" height="36.0" fill="#eef1f4" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="542.0" y="357.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">...</text>
+<rect x="564.0" y="334.0" width="356.0" height="36.0" fill="#ffffff" fill-opacity="1.0" stroke="#1f2933" stroke-width="1"/>
+<text x="574.0" y="357.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#c4ccd4" text-anchor="start" font-weight="normal" font-style="normal">empty</text>
+<line x1="564.0" y1="132.0" x2="70.0" y2="150.0" stroke="#d9730d" stroke-width="1.5" marker-end="url(#aInk)"/>
+<text x="520.0" y="396.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">size is in quarter pixels: 'e' drawn at 20 px is size 80.</text>
+<text x="520.0" y="414.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">A hit costs a hash probe, then cv_raster_mask paints the</text>
+<text x="520.0" y="432.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">cached coverage rectangle in the fill colour.</text>
+<text x="520.0" y="456.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">A miss rasterises the glyph once with stb_truetype</text>
+<text x="520.0" y="474.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">into the next free spot, then it is a hit forever.</text>
+</svg>

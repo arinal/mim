@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="504" viewBox="0 0 900 504">
+<defs><marker id="aDown" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9730d"/></marker><marker id="aUp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f8b8d"/></marker><marker id="aInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2933"/></marker><marker id="aMute" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="450.0" y="28.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="17" fill="#1f2933" text-anchor="middle" font-weight="bold" font-style="normal">What the canvas allocates (1280 x 720)</text>
+<text x="450.0" y="50.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="middle" font-weight="normal" font-style="normal">all of it at cv_init, from one memory budget; nothing is allocated while drawing.  Total: 4.86 MiB + the images loaded</text>
+<text x="40.0" y="103.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">pixel buffer</text>
+<rect x="210.0" y="86.0" width="480.0" height="24.0" fill="#cfd6dd" fill-opacity="1.0" stroke="#1f2933" stroke-width="1.5"/>
+<text x="700.0" y="103.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">3.52 MiB   owned by the caller</text>
+<text x="40.0" y="155.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">cells</text>
+<rect x="210.0" y="138.0" width="480.8" height="24.0" fill="#d9730d" fill-opacity="0.55" stroke="#d9730d" stroke-width="1.5"/>
+<text x="700.8" y="155.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">3.521 MiB   scratch for one fill</text>
+<text x="40.0" y="191.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">glyph atlas</text>
+<rect x="210.0" y="174.0" width="136.5" height="24.0" fill="#2b9348" fill-opacity="0.55" stroke="#2b9348" stroke-width="1.5"/>
+<text x="356.5" y="191.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">1.000 MiB   cached glyph coverage</text>
+<text x="40.0" y="227.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">path points</text>
+<rect x="210.0" y="210.0" width="17.1" height="24.0" fill="#2f6fb5" fill-opacity="0.55" stroke="#2f6fb5" stroke-width="1.5"/>
+<text x="237.1" y="227.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">0.125 MiB   16384 points x 8 B</text>
+<text x="40.0" y="263.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">stroke scratch</text>
+<rect x="210.0" y="246.0" width="17.1" height="24.0" fill="#2f6fb5" fill-opacity="0.55" stroke="#2f6fb5" stroke-width="1.5"/>
+<text x="237.1" y="263.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">0.125 MiB   one subpath, repeats removed</text>
+<text x="40.0" y="299.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">glyph table</text>
+<rect x="210.0" y="282.0" width="10.7" height="24.0" fill="#2b9348" fill-opacity="0.55" stroke="#2b9348" stroke-width="1.5"/>
+<text x="230.7" y="299.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">0.078 MiB   4096 slots x 20 B</text>
+<text x="40.0" y="335.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">subpaths</text>
+<rect x="210.0" y="318.0" width="2.0" height="24.0" fill="#2f6fb5" fill-opacity="0.55" stroke="#2f6fb5" stroke-width="1.5"/>
+<text x="222.0" y="335.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">0.012 MiB   1024 x 12 B</text>
+<text x="40.0" y="371.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#1f2933" text-anchor="start" font-weight="bold" font-style="normal">canvas record</text>
+<rect x="210.0" y="354.0" width="2.0" height="24.0" fill="#2f6fb5" fill-opacity="0.55" stroke="#2f6fb5" stroke-width="1.5"/>
+<text x="222.0" y="371.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">0.003 MiB   includes the state and 32 saved ones</text>
+<rect x="40.0" y="402.0" width="14.0" height="14.0" fill="#2f6fb5" fill-opacity="0.55" stroke="#2f6fb5" stroke-width="1"/>
+<text x="62.0" y="414.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">path and state (front end)</text>
+<rect x="250.0" y="402.0" width="14.0" height="14.0" fill="#d9730d" fill-opacity="0.55" stroke="#d9730d" stroke-width="1"/>
+<text x="272.0" y="414.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">rasteriser</text>
+<rect x="360.0" y="402.0" width="14.0" height="14.0" fill="#2b9348" fill-opacity="0.55" stroke="#2b9348" stroke-width="1"/>
+<text x="382.0" y="414.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">text</text>
+<text x="40.0" y="434.0" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#7b8794" text-anchor="start" font-weight="normal" font-style="normal">images add width x height x 4 bytes each, from the same budget (up to 64, each at most 4096 x 4096)</text>
+</svg>
