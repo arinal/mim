@@ -181,8 +181,9 @@ cmake --build build/debug
 ctest --test-dir build/debug --output-on-failure
 ```
 
-No display? `mim` says so and keeps running headless. Other presets: `clang`, `asan`, `tsan`,
-`valgrind`, `fuzz`. Everything about the tests is in [docs/testing.md](docs/testing.md).
+No display? `mim` says so and keeps running headless. Other presets: `release`, `clang`, `asan`,
+`tsan`, `valgrind`, `fuzz`. Everything about the tests is in [docs/testing.md](docs/testing.md).
+How the canvas draws, from a `cv_*` call to pixels, is in [docs/canvas.md](docs/canvas.md).
 
 Changing what a guest can import: edit `src/mim/sdk/mim.ffi`, run `cargo run -p ffigen`, and commit the
 table with the files it rewrites. [src/tools/ffigen](src/tools/ffigen/README.md) has the steps.

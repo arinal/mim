@@ -6,7 +6,7 @@ what was measured about them, and what they still don't catch.
 ## 1. Running the tests
 
 ```sh
-cmake --preset debug             # or clang, asan, tsan, valgrind, fuzz
+cmake --preset debug             # or release, clang, asan, tsan, valgrind, fuzz
 cmake --build build/debug
 ctest --test-dir build/debug --output-on-failure
 ctest --test-dir build/debug -R test_guest   # one test
@@ -18,17 +18,18 @@ The build needs clang with the wasm32 target and `wasm-ld` (lld), and Rust with
 | Preset | Compiler | What it adds | What it catches |
 |---|---|---|---|
 | `debug` | default (GCC) | `-Wall -Wextra -Werror -pedantic`, strict C99 | test failures, warnings |
+| `release` | default (GCC) | the same flags, `-O3 -DNDEBUG` | what only shows when `assert` is compiled out (a variable used only in an `assert` fails `-Werror`) or when the optimiser rounds floats differently |
 | `clang` | clang | the same flags | what GCC accepts and clang doesn't (e.g. glibc's `_Generic` `strchr` under `-pedantic`) |
 | `asan` | default | AddressSanitizer + UBSan (plus `float-cast-overflow`, which GCC's UBSan leaves out), no recovery | out-of-bounds, use-after-free, leaks, undefined behaviour (a guest's floats cast to integers included); also MIM's own poisoned guard bytes |
 | `tsan` | default | ThreadSanitizer + UBSan | data races, wrong memory orders |
 | `valgrind` | default | every test runs under `valgrind --leak-check=full --errors-for-leak-kinds=all` | uninitialised reads, leaks, without recompiling |
 | `fuzz` | clang `-O1` | ASan + libFuzzer; `fuzz_mem` and `fuzz_image` become real fuzzers | allocator and PNG-decoding bugs found by coverage-guided inputs |
 
-Every preset is a Debug build, so `assert` is on everywhere.
+Every preset except `release` is a Debug build, so `assert` is on in all of them.
 
 ### CI
 
-`.github/workflows/ci.yml` runs all six presets on `ubuntu-26.04` (the first Ubuntu that packages
+`.github/workflows/ci.yml` runs all seven presets on `ubuntu-26.04` (the first Ubuntu that packages
 SDL3) on every push to `main` and every pull request
 (`fail-fast: false`, so one red job doesn't hide another). On top of `ctest`:
 

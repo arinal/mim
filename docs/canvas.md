@@ -130,7 +130,46 @@ in `cv_init`, from a single heap budget handed in by the caller; the sizes above
 1280 × 720 canvas. Cells grow with the canvas, the rest is fixed. Images are extra: each takes
 `width × height × 4` bytes from the same budget.
 
+All of it hangs off one record, `cv_impl_t` (`canvas_impl.h`). The sections below take it apart,
+group by group:
+
+```c
+typedef struct cv_impl_t {
+    mem_budget_t *budget;            // where everything below came from
+    uint32_t *pixels;                // 2.2  the pixel buffer (the caller's)
+    uint32_t width, height;
+
+    cv_state_t state;                // 2.3  what drawing calls look up
+    cv_state_t saved[cv_max_saves];  //      the save stack, 32 deep
+    uint32_t depth;
+
+    cv_point_t *points;              // 2.4  the current path, in device space
+    uint32_t point_count;
+    cv_subpath_t *subpaths;
+    uint32_t subpath_count;
+    cv_point_t *scratch;             // 2.5  cv_stroke's cleaned copy of one subpath
+
+    float *cells;                    // 2.6  signed area, (width + 2) x height
+    uint32_t dirty_y0, dirty_y1, dirty_x0, dirty_x1;
+
+    cv_image_t images[cv_max_images];  // 2.7  decoded images, 64 slots
+    uint8_t *atlas;                    //      glyph coverage, 1024 x 1024
+    cv_glyph_t *glyphs;                //      the glyph table, 4096 slots
+    uint32_t glyph_count;
+    uint32_t shelf_x, shelf_y, shelf_height;
+} cv_impl_t;                         // 2736 bytes; the arrays it points to are the rest
+```
+
+The caller only ever holds a `cv_context_t`, an opaque handle with a pointer to this record, so
+the fields stay private to the canvas.
+
 ### 2.2 The pixel buffer
+
+```c
+uint32_t *pixels;   // width * height, rows top to bottom, 0x00RRGGBB
+uint32_t width;
+uint32_t height;
+```
 
 `uint32_t *pixels`, `width × height`, one `0x00RRGGBB` per pixel; pixel `(x, y)` is
 `pixels[y * width + x]`. The top byte is unused: the canvas blends colours onto what is already
@@ -168,6 +207,24 @@ to widen it.
 
 A **path** is a list of shapes waiting to be filled or stroked. It is stored as two flat arrays:
 
+```c
+typedef struct cv_point_t {
+    float x;
+    float y;
+} cv_point_t;                // 8 bytes, device space
+
+typedef struct cv_subpath_t {
+    uint32_t first;          // index of its first point in points[]
+    uint32_t count;          // how many points it has
+    bool closed;             // cv_close_path was called on it
+} cv_subpath_t;              // 12 bytes
+
+cv_point_t *points;          // cv_max_points (16384)
+uint32_t point_count;
+cv_subpath_t *subpaths;      // cv_max_subpaths (1024)
+uint32_t subpath_count;
+```
+
 ![The path](img/canvas/path_data.svg)
 
 - `points[ ]`: every point of every shape, in order, as `(x, y)` floats **in device space**.
@@ -195,6 +252,10 @@ call return `false`. Curves count by the lines they become (section 3.3).
 
 ### 2.5 `scratch`
 
+```c
+cv_point_t *scratch;   // cv_max_points, like points[]; only cv_stroke uses it
+```
+
 A second array of points, the same size as `points`, used by `cv_stroke` and nothing else. To
 stroke a subpath, the code first copies its points into `scratch` **without consecutive repeats**
 (two points closer than 0.001 px have no direction between them, and a direction is needed to
@@ -205,6 +266,16 @@ the path survives the stroke.
 
 This is the rasteriser's working buffer, and the least obvious piece of data. It is a grid of
 `float`s, **one per pixel plus two spare columns per row**: `(width + 2) × height`.
+
+```c
+float *cells;          // cell (x, y) is cells[y * (width + 2) + x]; all 0 between fills
+uint32_t dirty_y0;     // the rows [y0, y1) and columns [x0, x1) the current fill touched;
+uint32_t dirty_y1;     // empty (y0 = x0 = UINT32_MAX, y1 = x1 = 0) between fills
+uint32_t dirty_x0;
+uint32_t dirty_x1;
+```
+
+There is no `struct cell`: a cell is a single `float`, and its position in the array is its pixel.
 
 ![Pixels and cells](img/canvas/cells_layout.svg)
 
@@ -228,6 +299,16 @@ What to know about the buffer itself:
 
 ### 2.7 Images and glyphs
 
+```c
+typedef struct cv_image_t {
+    uint32_t *pixels;        // premultiplied 0xAARRGGBB, rows top to bottom; NULL for a free slot
+    uint32_t width;
+    uint32_t height;
+} cv_image_t;
+
+cv_image_t images[cv_max_images];   // 64 slots, inside cv_impl_t itself
+```
+
 **Image table.** `images[64]`: each slot holds a pointer to decoded pixels, a width and a height,
 or `NULL` for a free slot. `cv_image_load` decodes a PNG (with the `stb_image` decoder, built for
 PNG only), converts it to **premultiplied** `0xAARRGGBB` (the colour channels already multiplied
@@ -240,6 +321,23 @@ font outline into coverage is much slower than copying coverage. So the canvas r
 glyph once and remembers it.
 
 ![The glyph atlas](img/canvas/atlas.svg)
+
+```c
+typedef struct cv_glyph_t {
+    int32_t glyph;           // the key: the font's glyph index...
+    uint32_t size;           // ...at this size in quarter pixels; 0 marks an empty slot
+    uint16_t x, y;           // where its coverage starts in the atlas
+    uint16_t width, height;  // how big it is
+    int16_t left, top;       // where that goes, relative to the pen on the baseline
+} cv_glyph_t;                // 20 bytes
+
+uint8_t *atlas;              // cv_atlas_side x cv_atlas_side (1024 x 1024) bytes of coverage
+cv_glyph_t *glyphs;          // cv_max_glyphs (4096) slots, open addressing
+uint32_t glyph_count;        // used slots; at half full everything starts over
+uint32_t shelf_x;            // where the next glyph goes on the current shelf
+uint32_t shelf_y;            // the top of the current shelf
+uint32_t shelf_height;       // its tallest glyph so far
+```
 
 - The **atlas** is one big byte image (1024 × 1024), one byte of coverage per pixel. Glyphs are
   packed onto it in rows ("shelves"), left to right.
