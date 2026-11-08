@@ -9,7 +9,6 @@ nothing checks the copies agree until a guest loads. With ffigen the table holds
 the copies are generated.
 
 ```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 400}}}%%
 flowchart TB
     accTitle: What ffigen generates
     accDescr: ffigen reads src/mim/sdk/mim.ffi and writes four files. For the host, src/mim/runtime/guest/ffi.h has the constants, the handler prototypes and the import table type, and src/mim/runtime/guest/ffi.c has one thunk per import and the link table. For the guests, src/mim/sdk/rust/src/ffi.rs has the constants and the raw extern block, and src/mim/sdk/cpp/ffi.h has the constants and the raw declarations in plain C, used by the C++ SDK and the hostile C guests.

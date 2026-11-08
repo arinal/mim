@@ -182,15 +182,15 @@ static void test_nonzero(void) {
            "########\n");
 }
 
-// The worked examples of docs/canvas.md; if one of these changes, the document is out of date
+// The worked examples of docs/canvas/3-pipeline.md; if one of these changes, the document is out of date
 static void test_doc_examples(void) {
-    // B: edges inside a pixel split their area between two cells
+    // the walkthrough (docs/canvas/4-walkthrough.md): edges inside a pixel split their area between two cells
     reset();
     cv_fill_rect(1.5f, 1, 2, 1);
     CHECK(pixel(1, 1) == over(white, 128) && pixel(2, 1) == white && pixel(3, 1) == over(white, 128));
     CHECK(pixel(4, 1) == bg && pixel(2, 0) == bg && pixel(2, 2) == bg);
 
-    // C: a slanted edge, one note per row
+    // B: a slanted edge, one note per row
     reset();
     cv_begin_path();
     cv_move_to(1, 0);
@@ -200,7 +200,7 @@ static void test_doc_examples(void) {
     CHECK(pixel(1, 0) == over(white, 128) && pixel(2, 0) == bg);
     CHECK(pixel(1, 1) == white && pixel(2, 1) == over(white, 128) && pixel(3, 1) == bg);
 
-    // D: a shape starting off the left of the canvas still starts the winding
+    // C: a shape starting off the left of the canvas still starts the winding
     reset();
     cv_fill_rect(-3, 0, 5, 1);
     expect(__LINE__,
@@ -209,7 +209,7 @@ static void test_doc_examples(void) {
            "........\n"
            "........\n");
 
-    // E: two overlapping rectangles in one fill: winding 2 in the overlap is still just covered
+    // D: two overlapping rectangles in one fill: winding 2 in the overlap is still just covered
     reset();
     cv_begin_path();
     cv_move_to(0, 0);
@@ -229,7 +229,7 @@ static void test_doc_examples(void) {
            "........\n"
            "........\n");
 
-    // E2: the second rectangle the other way round: winding 0 where they overlap, a hole
+    // E: the second rectangle the other way round: winding 0 where they overlap, a hole
     reset();
     cv_begin_path();
     cv_move_to(0, 0);
@@ -248,6 +248,19 @@ static void test_doc_examples(void) {
            "........\n"
            "........\n"
            "........\n");
+
+    // the walkthrough (docs/canvas/4-walkthrough.md): translate(0.5, 0), then fill_rect(1, 1, 2, 2); both edges
+    // fall mid-pixel, so each row is half, full, half
+    reset();
+    cv_translate(0.5f, 0);
+    cv_fill_rect(1, 1, 2, 2);
+    for (uint32_t y = 1; y <= 2; y++) {
+        CHECK(pixel(0, y) == bg && pixel(1, y) == over(white, 128) && pixel(2, y) == white);
+        CHECK(pixel(3, y) == over(white, 128) && pixel(4, y) == bg);
+    }
+    for (uint32_t x = 0; x < w; x++) {
+        CHECK(pixel(x, 0) == bg && pixel(x, 3) == bg);
+    }
 }
 
 static void test_colour(void) {

@@ -15,7 +15,6 @@ layer that should one day boot on bare metal.
 ## How it fits together
 
 ```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 400, "subGraphTitleMargin": {"top": 10, "bottom": 10}}}}%%
 flowchart TB
     accTitle: How MIM fits together
     accDescr: Everything except the guest apps is one executable, mim; on Linux it loads libc and libSDL3 as shared libraries. Seven untrusted WASM guest apps (hello_rust, hello_cpp, bounce_rust, canvas_rust and canvas_cpp, and ui_rust and ui_cpp), loaded one at a time, run inside the wasm3 interpreter. Their imports reach the runtime's guest loader, which checks every pointer and passes drawing calls to the canvas, which draws into the framebuffer, using stb for PNGs and glyphs. The runtime reaches the OS only through platform/pl.h. Linux implements it today; bare metal in QEMU is planned for stage 9, and Windows is not planned.
@@ -183,7 +182,7 @@ ctest --test-dir build/debug --output-on-failure
 
 No display? `mim` says so and keeps running headless. Other presets: `release`, `clang`, `asan`,
 `tsan`, `valgrind`, `fuzz`. Everything about the tests is in [docs/testing.md](docs/testing.md).
-How the canvas draws, from a `cv_*` call to pixels, is in [docs/canvas.md](docs/canvas.md).
+How the canvas draws, from a `cv_*` call to pixels, is in [docs/canvas](docs/canvas/README.md).
 
 Changing what a guest can import: edit `src/mim/sdk/mim.ffi`, run `cargo run -p ffigen`, and commit the
 table with the files it rewrites. [src/tools/ffigen](src/tools/ffigen/README.md) has the steps.
